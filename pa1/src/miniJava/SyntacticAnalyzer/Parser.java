@@ -284,7 +284,7 @@ public class Parser {
 	//  Can be useful if you want to error check and accept all-in-one.
 	private void accept(TokenType expectedType) throws SyntaxError {
 		if (_currentToken.getTokenType() == expectedType) {
-			System.out.println(expectedType);
+			//System.out.println(expectedType);
 			_currentToken = _scanner.scan();
 			return;
 		}
@@ -298,7 +298,7 @@ public class Parser {
 	private TokenType acceptMultiple(TokenType[] expectedTypes) throws SyntaxError {
 		for (TokenType expectedType : expectedTypes) {
 			if (_currentToken.getTokenType() == expectedType) {
-				System.out.println(expectedType);
+				//System.out.println(expectedType);
 				_currentToken = _scanner.scan();
 				return expectedType;
 			}
@@ -311,7 +311,7 @@ public class Parser {
 	private TokenType acceptMultipleOptional(TokenType[] expectedTypes) {
 		for (TokenType expectedType : expectedTypes) {
 			if (_currentToken.getTokenType() == expectedType) {
-				System.out.println(expectedType);
+				//System.out.println(expectedType);
 				_currentToken = _scanner.scan();
 				return _currentToken.getTokenType();
 			}
@@ -322,7 +322,7 @@ public class Parser {
 
 	private boolean acceptOptional(TokenType expectedType) {
 		if (_currentToken.getTokenType() == expectedType) {
-			System.out.println(expectedType);
+			//System.out.println(expectedType);
 			_currentToken = _scanner.scan();
 			return true;
 		}
