@@ -1,5 +1,8 @@
 package miniJava.SyntacticAnalyzer;
 
+import java.beans.Visibility;
+import java.lang.reflect.AnnotatedArrayType;
+
 // TODO: Enumate the types of tokens we have.
 //   Consider taking a look at the terminals in the Grammar.
 //   What types of tokens do we want to be able to differentiate between?
@@ -14,5 +17,19 @@ package miniJava.SyntacticAnalyzer;
 //   and then in a later assignment, we can peek at the Token's underlying text
 //   to differentiate between them.
 public enum TokenType {
-
+    Class, Visibility, Access, Void, This, Return, New,
+    Identifier, 
+    Int, Boolean,
+    If, Else, While,
+    Minus, Operator, Dot, Comma, Semicolon,
+    Num,
+    Logic,
+    LParen, RParen, LCurly, RCurly, LBracket, RBracket,
+    Equality, NotEquality,
+    Assignment,
+    LogicalUnOperator, LogicalBiOperator,
+    Comparator,
+    Error,
+    None,
+    EOT
 }
