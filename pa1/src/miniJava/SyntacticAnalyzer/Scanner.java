@@ -323,7 +323,7 @@ public class Scanner {
 	}
 
 	private boolean breakLoop() {
-		char[] breakChars = { ' ', '\n', '\r', '\t', '+', '-', '*', '/', '<', '>', '=', '!', '(', ')', '[', ']', '{', '}', ';', ',' };
+		char[] breakChars = { ' ', '\n', '\r', '\t', '+', '-', '*', '/', '<', '>', '=', '!', '(', ')', '[', ']', '{', '}', ';', ',', '.' };
 
 		for (char c : breakChars) {
 			if (c == _currentChar) {

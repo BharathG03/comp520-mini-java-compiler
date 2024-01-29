@@ -146,8 +146,10 @@ public class Parser {
 				parseExpression();
 			}
 			else if (acceptOptional(TokenType.LBracket)) {
-				parseExpression();
-				accept(TokenType.RBracket);
+				if (!acceptOptional(TokenType.RBracket)) {
+					parseExpression();
+				}
+				
 				if (acceptOptional(TokenType.Identifier)) {
 					accept(TokenType.Assignment);
 					parseExpression();
@@ -236,9 +238,11 @@ public class Parser {
 	private void parseType() {
 		TokenType[] param = { TokenType.Int, TokenType.Boolean, TokenType.Identifier };
 
-		acceptMultiple(param);
+		TokenType type = acceptMultiple(param);
 
-		if (acceptOptional(TokenType.LBracket)) {
+		if (type == TokenType.Boolean && acceptOptional(TokenType.LBracket)) {
+			_errors.reportError("Boolean Array is not a valid type");
+		} else if (acceptOptional(TokenType.LBracket)) {
 			accept(TokenType.RBracket);
 		}
 	}
