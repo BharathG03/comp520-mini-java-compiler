@@ -50,7 +50,6 @@ public class Parser {
 		accept(TokenType.LCurly);
 		
 		// TODO: Parse either a FieldDeclaration or MethodDeclaration
-		//System.out.println(_currentToken.getTokenText());
 		
 		while (!acceptOptional(TokenType.RCurly)) {
 			parseFieldDeclaration();
@@ -110,20 +109,34 @@ public class Parser {
 			parseExpression();
 			accept(TokenType.RParen);
 			accept(TokenType.LCurly);
-			parseStatement();
-			accept(TokenType.RCurly);
+
+			while (!acceptOptional(TokenType.RCurly)) {
+				parseStatement();
+			}
 		}
 		else if (acceptOptional(TokenType.If)) {
 			accept(TokenType.LParen);
 			parseExpression();
 			accept(TokenType.RParen);
-			accept(TokenType.LCurly);
-			parseStatement();
-			accept(TokenType.RCurly);
-			if (acceptOptional(TokenType.Else)) {
-				accept(TokenType.LCurly);
+			
+			if (acceptOptional(TokenType.LCurly)) {
+				while (!acceptOptional(TokenType.RCurly)) {
+					parseStatement();
+				}
+			}
+			else {
 				parseStatement();
-				accept(TokenType.RCurly);
+			}
+
+			if (acceptOptional(TokenType.Else)) {
+				if (acceptOptional(TokenType.LCurly)) {
+					while (!acceptOptional(TokenType.RCurly)) {
+						parseStatement();
+					}
+				}
+				else {
+					parseStatement();
+				}
 			}
 		}
 		else if (_currentToken.getTokenType() == TokenType.Identifier || _currentToken.getTokenType() == TokenType.This) {
@@ -134,12 +147,11 @@ public class Parser {
 			}
 			else if (acceptOptional(TokenType.LBracket)) {
 				parseExpression();
-				if (acceptOptional(TokenType.RBracket)) {
-					accept(TokenType.Identifier);
+				accept(TokenType.RBracket);
+				if (acceptOptional(TokenType.Identifier)) {
 					accept(TokenType.Assignment);
 					parseExpression();
 				} else {
-					accept(TokenType.RBracket);
 					accept(TokenType.Assignment);
 					parseExpression();
 				}
@@ -208,9 +220,10 @@ public class Parser {
 				}
 			}
 		}
+		else if (acceptOptional(TokenType.Num) || acceptOptional(TokenType.Logic)) {}
 		else {
-			acceptOptional(TokenType.Num);
-			acceptOptional(TokenType.Logic);
+			_errors.reportError("Unexpected Token " + _currentToken.getTokenType() + " detected");
+			throw new SyntaxError();
 		}
 
 		TokenType[] binop = { TokenType.Operator, TokenType.LogicalBiOperator, TokenType.Minus, TokenType.Equality,
@@ -284,7 +297,6 @@ public class Parser {
 	//  Can be useful if you want to error check and accept all-in-one.
 	private void accept(TokenType expectedType) throws SyntaxError {
 		if (_currentToken.getTokenType() == expectedType) {
-			//System.out.println(expectedType);
 			_currentToken = _scanner.scan();
 			return;
 		}
@@ -298,7 +310,6 @@ public class Parser {
 	private TokenType acceptMultiple(TokenType[] expectedTypes) throws SyntaxError {
 		for (TokenType expectedType : expectedTypes) {
 			if (_currentToken.getTokenType() == expectedType) {
-				//System.out.println(expectedType);
 				_currentToken = _scanner.scan();
 				return expectedType;
 			}
@@ -311,7 +322,6 @@ public class Parser {
 	private TokenType acceptMultipleOptional(TokenType[] expectedTypes) {
 		for (TokenType expectedType : expectedTypes) {
 			if (_currentToken.getTokenType() == expectedType) {
-				//System.out.println(expectedType);
 				_currentToken = _scanner.scan();
 				return _currentToken.getTokenType();
 			}
@@ -322,7 +332,6 @@ public class Parser {
 
 	private boolean acceptOptional(TokenType expectedType) {
 		if (_currentToken.getTokenType() == expectedType) {
-			//System.out.println(expectedType);
 			_currentToken = _scanner.scan();
 			return true;
 		}
