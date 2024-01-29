@@ -148,7 +148,8 @@ public class Parser {
 			else if (acceptOptional(TokenType.LBracket)) {
 				if (!acceptOptional(TokenType.RBracket)) {
 					parseExpression();
-				}
+					accept(TokenType.RBracket);
+				} 
 				
 				if (acceptOptional(TokenType.Identifier)) {
 					accept(TokenType.Assignment);
