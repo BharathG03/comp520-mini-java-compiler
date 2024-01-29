@@ -2,6 +2,8 @@ package miniJava.SyntacticAnalyzer;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Arrays;
+
 import miniJava.ErrorReporter;
 
 public class Scanner {
@@ -79,9 +81,9 @@ public class Scanner {
 			case '/':
 				takeIt();
 
-				if (!eot && (_currentChar == '/' && _currentText.charAt(_currentText.length() - 1) == '/')) {
+				if (!eot && _currentChar == '/') {
 					ignoreSingleLineComment();
-				} else if (!eot && (_currentChar == '*' && _currentText.charAt(_currentText.length() - 1) == '/')) {
+				} else if (!eot && _currentChar == '*') {
 					ignoreMultiLineComment();
 				} else {
 					return TokenType.Operator;
@@ -140,15 +142,11 @@ public class Scanner {
 				return TokenType.Dot;
 
 			case ',':
-				if (_currentText.length() == 0) {
-					takeIt();
-				}
+				takeIt();
 				return TokenType.Comma;
 
 			case ';':
-				if (_currentText.length() == 0) {
-					takeIt();
-				}
+				takeIt();
 				return TokenType.Semicolon;
 
 			case '<':
@@ -170,39 +168,27 @@ public class Scanner {
 				return TokenType.Comparator;
 
 			case '(':
-				if (_currentText.length() == 0) {
-					takeIt();
-				}
+				takeIt();
 				return TokenType.LParen;
 
 			case ')':
-				if (_currentText.length() == 0) {
-					takeIt();
-				}
+				takeIt();
 				return TokenType.RParen;
 
 			case '[':
-				if (_currentText.length() == 0) {
-					takeIt();
-				}
+				takeIt();
 				return TokenType.LBracket;
 
 			case ']':
-				if (_currentText.length() == 0) {
-					takeIt();
-				}
+				takeIt();
 				return TokenType.RBracket;
 
 			case '{':
-				if (_currentText.length() == 0) {
-					takeIt();
-				}
+				takeIt();
 				return TokenType.LCurly;
 
 			case '}':
-				if (_currentText.length() == 0) {
-					takeIt();
-				}
+				takeIt();
 				return TokenType.RCurly;
 
 			case '0':
@@ -240,7 +226,7 @@ public class Scanner {
 	}
 
 	private TokenType buildToken() {
-		while (_currentChar != ' ' && _currentChar != '\n' && _currentChar != '\r' && _currentChar != '\t' && checkTokenType() == TokenType.None && !eot) {
+		while (!breakLoop() && !eot) {
 			if (_currentChar == '/' && _currentText.charAt(_currentText.length() - 1) == '/') {
 				ignoreSingleLineComment();
 			}
@@ -311,7 +297,7 @@ public class Scanner {
 
 		skipIt();
 
-		while (!eot && _currentChar != '/' && _currentText.charAt(_currentText.length() - 1) != '*') {
+		while (!eot && (_currentChar != '/' || _currentText.charAt(_currentText.length() - 1) != '*')) {
 			takeIt();
 		}
 
@@ -334,5 +320,17 @@ public class Scanner {
 
 	private boolean isDigit(char c) {
 		return (c >= '0') && (c <= '9');
+	}
+
+	private boolean breakLoop() {
+		char[] breakChars = { ' ', '\n', '\r', '\t', '+', '-', '*', '/', '<', '>', '=', '!', '(', ')', '[', ']', '{', '}', ';', ',' };
+
+		for (char c : breakChars) {
+			if (c == _currentChar) {
+				return true;
+			}
+		}
+
+		return false;
 	}
 }

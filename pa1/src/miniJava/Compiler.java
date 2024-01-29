@@ -27,7 +27,7 @@ public class Compiler {
 		/*
 		Token temp = _Scanner.scan();
 
-		(while (temp != null) {
+		while (temp != null) {
 			System.out.print(temp.getTokenText() + " , ");
 			System.out.println(temp.getTokenType());
 			temp = _Scanner.scan();
@@ -52,7 +52,7 @@ public class Compiler {
 		else {
 			System.out.println("Success");
 		}
-		
+
 		// TODO: If there are no errors, println("Success")
 	}
 }
