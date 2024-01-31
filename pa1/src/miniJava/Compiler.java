@@ -13,6 +13,11 @@ public class Compiler {
 	public static void main(String[] args) throws FileNotFoundException {
 		// TODO: Instantiate the ErrorReporter object
 
+		if (args.length == 0) {
+			System.out.println("Error");
+			return;
+		}
+
 		ErrorReporter _errorReporter = new ErrorReporter();
 		
 		// TODO: Check to make sure a file path is given in args

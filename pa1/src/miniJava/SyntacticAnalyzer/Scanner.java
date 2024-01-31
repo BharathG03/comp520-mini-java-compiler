@@ -2,7 +2,6 @@ package miniJava.SyntacticAnalyzer;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.Arrays;
 
 import miniJava.ErrorReporter;
 
@@ -237,11 +236,20 @@ public class Scanner {
 		}
 
 		TokenType type = this.TokenMap.getTokenType(_currentText.toString());
+		if (type == TokenType.Identifier) {
+			if (!Character.isLetter(_currentText.charAt(0))) {
+				scanError("Invalid Identifier");
 
-		if (type == TokenType.Identifier && !Character.isLetter(_currentText.charAt(0))) {
-			scanError("Invalid Identifier");
+				return TokenType.Error;
+			}
 
-			return TokenType.Error;
+			for (int i = 0; i < _currentText.length(); i++) {
+				if (!Character.isLetter(_currentText.charAt(i)) && !Character.isDigit(_currentText.charAt(i)) && _currentText.charAt(i) != '_') {
+					scanError("Invalid Identifier");
+
+					return TokenType.Error;
+				}
+			}
 		}
 
 		return type;
