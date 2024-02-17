@@ -154,6 +154,9 @@ public class Parser {
 				if (acceptOptional(TokenType.Identifier)) {
 					accept(TokenType.Assignment);
 					parseExpression();
+				} else {
+					accept(TokenType.Assignment);
+					parseExpression();
 				}
 			}
 			else if (acceptOptional(TokenType.LParen)) {
@@ -270,7 +273,7 @@ public class Parser {
 		TokenType[] refTokenTypes = { TokenType.Identifier, TokenType.This };
 		acceptMultiple(refTokenTypes);
 
-		while (acceptOptional(TokenType.Dot)) {
+		if (acceptOptional(TokenType.Dot)) {
 			accept(TokenType.Identifier);
 		}
 	}

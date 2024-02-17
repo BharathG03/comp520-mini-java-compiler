@@ -301,10 +301,6 @@ public class Scanner {
 			takeIt();
 		}
 
-		if (eot) {
-			_errors.reportError("Invalid multi-line comment");
-		}
-
 		skipIt();
 
 		_currentText.delete(deleteStart, _currentText.length());
