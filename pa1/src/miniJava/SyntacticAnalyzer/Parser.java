@@ -149,12 +149,11 @@ public class Parser {
 				if (!acceptOptional(TokenType.RBracket)) {
 					parseExpression();
 					accept(TokenType.RBracket);
-				} 
-				
-				if (acceptOptional(TokenType.Identifier)) {
 					accept(TokenType.Assignment);
 					parseExpression();
-				} else {
+				} 
+				else {
+					accept(TokenType.Identifier);
 					accept(TokenType.Assignment);
 					parseExpression();
 				}
@@ -273,7 +272,7 @@ public class Parser {
 		TokenType[] refTokenTypes = { TokenType.Identifier, TokenType.This };
 		acceptMultiple(refTokenTypes);
 
-		if (acceptOptional(TokenType.Dot)) {
+		while (acceptOptional(TokenType.Dot)) {
 			accept(TokenType.Identifier);
 		}
 	}
