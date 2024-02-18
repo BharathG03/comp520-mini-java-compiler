@@ -210,7 +210,7 @@ public class Parser {
 
 			if (acceptOptional(TokenType.Assignment)) {
 				Expression assignExpression = parseExpression();
-				return new AssignStmt(reference, assignExpression, pos);
+				statement = new AssignStmt(reference, assignExpression, pos);
 			}
 			else if (acceptOptional(TokenType.LBracket)) {
 				if (!acceptOptional(TokenType.RBracket)) {
