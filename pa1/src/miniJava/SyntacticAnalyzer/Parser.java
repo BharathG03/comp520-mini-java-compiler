@@ -20,11 +20,12 @@ public class Parser {
 		private static final long serialVersionUID = -6461942006097999362L;
 	}
 	
-	public void parse() {
+	public AST parse() {
 		try {
 			// The first thing we need to parse is the Program symbol
-			parseProgram();
+			return parseProgram();
 		} catch( SyntaxError e ) {}
+		return null;
 	}
 	
 	// Program ::= (ClassDeclaration)* eot
@@ -95,32 +96,6 @@ public class Parser {
 		
 		return Class;
 	}
-
-	/*
-	private void parseFieldDeclaration() throws SyntaxError {
-		boolean isMethodDeclaration = false;
-
-		acceptOptional(TokenType.Visibility);
-
-		acceptOptional(TokenType.Access);
-
-		if (acceptOptional(TokenType.Void)) {
-			isMethodDeclaration = true;
-		}
-		else {
-			parseType();
-		}
-
-		accept(TokenType.Identifier);
-		
-		if (isMethodDeclaration || _currentToken.getTokenType() == TokenType.LParen) {
-			parseMethodDeclaration();
-			return;
-		}
-		
-		accept(TokenType.Semicolon);
-	}
-	*/
 
 	private StatementList parseMethodDeclaration() throws SyntaxError {
 		StatementList statementList = new StatementList();
@@ -271,47 +246,70 @@ public class Parser {
 	}
 
 	private Expression parseExpression() {
+		Token curr = _currentToken;
+		Expression exp = null;
+		
 		if (acceptOptional(TokenType.New)) {
+			Expression newExp = null;
+
 			TokenType[] param = { TokenType.Identifier, TokenType.Int };
 			TokenType acceptedTokenType = acceptMultiple(param);
 
 			if (acceptedTokenType == TokenType.Identifier) {
 				if (acceptOptional(TokenType.LParen)) {
 					accept(TokenType.RParen);
+
+					newExp = new NewObjectExpr(new ClassType(new Identifier(curr), curr.getTokenPosition()), curr.getTokenPosition());
 				}
 				else {
 					accept(TokenType.LBracket);
-					parseExpression();
+					Expression idArrExp = parseExpression();
 					accept(TokenType.RBracket);
+
+					newExp = new NewArrayExpr(new ArrayType(new ClassType(new Identifier(curr), curr.getTokenPosition()), curr.getTokenPosition()), idArrExp, curr.getTokenPosition());
 				}
 			}
 			else {
 				accept(TokenType.LBracket);
-				parseExpression();
+				Expression intArrExp = parseExpression();
 				accept(TokenType.RBracket);
+
+				newExp = new NewArrayExpr(new ArrayType(new BaseType(TypeKind.ARRAY, curr.getTokenPosition()), curr.getTokenPosition()), intArrExp, curr.getTokenPosition());
 			}
+
+			exp = newExp;
 		}
 		else if (acceptOptional(TokenType.LParen)) {
-			parseExpression();
+			exp = parseExpression();
 			accept(TokenType.RParen);
 		}
 		else if (acceptOptional(TokenType.Minus) || acceptOptional(TokenType.LogicalUnOperator)) {
-			parseExpression();
+			Expression unopExp = parseExpression();
+			exp = new UnaryExpr(new Operator(curr), unopExp, curr.getTokenPosition());
 		}
 		else if (_currentToken.getTokenType() == TokenType.Identifier || _currentToken.getTokenType() == TokenType.This) {
-			parseReference();
+			Reference reference = parseReference();
 
 			if (acceptOptional(TokenType.LBracket)) {
-				parseExpression();
+				Expression ixExp = parseExpression();
 				accept(TokenType.RBracket);
+
+				exp = new IxExpr(reference, ixExp, curr.getTokenPosition());
 			} else if (acceptOptional(TokenType.LParen)) {
 				if (!acceptOptional(TokenType.RParen)) {
-					parseArgumentList();
+					ExprList argumentList = parseArgumentList();
 					accept(TokenType.RParen);
+
+					exp = new CallExpr(reference, argumentList, curr.getTokenPosition());
 				}
 			}
 		}
-		else if (acceptOptional(TokenType.Num) || acceptOptional(TokenType.Logic)) {}
+		else if (acceptOptional(TokenType.Num)) {
+			exp = new LiteralExpr(new IntLiteral(curr), curr.getTokenPosition());
+		}
+		else if (acceptOptional(TokenType.Logic)) {
+			exp = new LiteralExpr(new BooleanLiteral(curr), curr.getTokenPosition());
+		}
 		else {
 			_errors.reportError("Unexpected Token " + _currentToken.getTokenType() + " detected on " + _currentToken.getTokenPosition().toString());
 			throw new SyntaxError();
@@ -319,11 +317,15 @@ public class Parser {
 
 		TokenType[] binop = { TokenType.Operator, TokenType.LogicalBiOperator, TokenType.Minus, TokenType.Equality,
 				TokenType.NotEquality, TokenType.Comparator };
+
+		Token binopToken = _currentToken;
+
 		if (acceptMultipleOptional(binop) != null) {
-			parseExpression();
+			Expression binopExp = parseExpression();
+			return new BinaryExpr(new Operator(binopToken), exp, binopExp, curr.getTokenPosition());
 		}
 
-		return null;
+		return exp;
 	}
 
 	private TypeDenoter parseType() {
