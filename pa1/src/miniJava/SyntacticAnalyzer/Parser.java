@@ -95,6 +95,8 @@ public class Parser {
 
 				Class.methodDeclList.add(tempMethod);
 			} else {
+				tempField = new FieldDecl(isPrivate, isStatic, type, id, _currentToken.getTokenPosition());
+
 				accept(TokenType.Semicolon);
 				Class.fieldDeclList.add(tempField);
 			}
@@ -257,6 +259,7 @@ public class Parser {
 		
 		if (acceptOptional(TokenType.New)) {
 			Expression newExp = null;
+			curr = _currentToken;
 
 			TokenType[] param = { TokenType.Identifier, TokenType.Int };
 			TokenType acceptedTokenType = acceptMultiple(param);
@@ -280,7 +283,7 @@ public class Parser {
 				Expression intArrExp = parseExpression();
 				accept(TokenType.RBracket);
 
-				newExp = new NewArrayExpr(new ArrayType(new BaseType(TypeKind.ARRAY, curr.getTokenPosition()), curr.getTokenPosition()), intArrExp, curr.getTokenPosition());
+				newExp = new NewArrayExpr(new ArrayType(new BaseType(TypeKind.INT, curr.getTokenPosition()), curr.getTokenPosition()), intArrExp, curr.getTokenPosition());
 			}
 
 			exp = newExp;
@@ -347,7 +350,13 @@ public class Parser {
 			return new BaseType(TypeKind.UNSUPPORTED, typeToken.getTokenPosition());
 		} else if (acceptOptional(TokenType.LBracket)) {
 			accept(TokenType.RBracket);
-			return new ArrayType(new BaseType(TypeKind.ARRAY, typeToken.getTokenPosition()), typeToken.getTokenPosition());
+
+			if (type == TokenType.Int) {
+				return new ArrayType(new BaseType(TypeKind.INT, typeToken.getTokenPosition()), typeToken.getTokenPosition());
+			}
+			else {
+				return new ArrayType(new ClassType(new Identifier(typeToken), typeToken.getTokenPosition()), typeToken.getTokenPosition());
+			}
 		}
 		
 		if (type == TokenType.Int) {
