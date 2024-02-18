@@ -1,8 +1,5 @@
 package miniJava.SyntacticAnalyzer;
 
-import java.beans.Visibility;
-import java.lang.reflect.AnnotatedArrayType;
-
 // TODO: Enumate the types of tokens we have.
 //   Consider taking a look at the terminals in the Grammar.
 //   What types of tokens do we want to be able to differentiate between?

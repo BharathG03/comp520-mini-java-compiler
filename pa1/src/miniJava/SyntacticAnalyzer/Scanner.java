@@ -2,7 +2,6 @@ package miniJava.SyntacticAnalyzer;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.util.Arrays;
 
 import miniJava.ErrorReporter;
 
@@ -15,7 +14,7 @@ public class Scanner {
 
 	private boolean eot = false;
 
-	//private int line = 1;
+	private int line = 1;
 
 	private final static char eolUnix = '\n';
 	private final static char eolWindows = '\r';
@@ -32,16 +31,6 @@ public class Scanner {
 	}
 	
 	public Token scan() {
-		// TODO: This function should check the current char to determine what the token could be.
-		
-		// TODO: Consider what happens if the current char is whitespace
-		
-		// TODO: Consider what happens if there is a comment (// or /* */)
-		
-		// TODO: What happens if there are no more tokens?
-		
-		// TODO: Determine what the token is. For example, if it is a number
-
 		if (eot) {
 			return null;
 		}
@@ -258,21 +247,18 @@ public class Scanner {
 			} else if (c < 0 ||c > 127) {
 				throw new IOException("Lexical Error");
 			}
+			
+			if (c == 10) {
+				line += 1;
+			}
 
-			//checkForNewLine();
-			
-			// TODO: What happens if c == -1?
-			
-			// TODO: What happens if c is not a regular ASCII character?			
 		} catch( IOException e ) {
 			_errors.reportError("Scan Error: " + e);
 		}
 	}
 	
 	private Token makeToken( TokenType toktype, String text ) {
-		// TODO: return a new Token with the appropriate type and text
-
-		return new Token(toktype, text);
+		return new Token(toktype, text, new SourcePosition(this.line));
 	}
 
 	private void ignoreSpace() {
@@ -287,7 +273,6 @@ public class Scanner {
 		while (!eot && (_currentChar != eolUnix && _currentChar != eolWindows)) {
 			skipIt();
 		}
-		//line += 1;
 
 		ignoreSpace();
 	}
@@ -311,16 +296,6 @@ public class Scanner {
 
 		ignoreSpace();
 	}
-
-	/*
-	private void checkForNewLine() {
-		if (_currentChar == eolUnix || _currentChar == eolWindows) {
-			line += 1;
-			//System.out.println(_currentChar);
-			//System.out.println(line);
-		}
-	}
-	*/
 
 	private boolean isDigit(char c) {
 		return (c >= '0') && (c <= '9');
