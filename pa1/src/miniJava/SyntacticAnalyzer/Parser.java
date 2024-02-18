@@ -41,51 +41,57 @@ public class Parser {
 	
 	// ClassDeclaration ::= class identifier { (FieldDeclaration|MethodDeclaration)* }
 	private ClassDecl parseClassDeclaration() throws SyntaxError {
-		ClassDecl Class = new ClassDecl("", new FieldDeclList(), new MethodDeclList(), _currentToken.getTokenPosition());
-
 		accept(TokenType.Class);
-		
-		Class.name = _currentToken.getTokenText();
+
+		ClassDecl Class = new ClassDecl(_currentToken.getTokenText(), new FieldDeclList(), new MethodDeclList(),
+				_currentToken.getTokenPosition());
 
 		accept(TokenType.Identifier);
 		accept(TokenType.LCurly);
 		
 		while (!acceptOptional(TokenType.RCurly)) {
-			// parseFieldDeclaration();
-			FieldDecl tempField = new FieldDecl(true, false, null, null, _currentToken.getTokenPosition());
-			MethodDecl tempMethod = new MethodDecl(tempField, null, null, _currentToken.getTokenPosition());
+			FieldDecl tempField = null;
+			MethodDecl tempMethod = null;
+
+			boolean isPrivate = false;
+			TypeDenoter type = null;
+			ParameterDeclList paramaters = new ParameterDeclList();
+			StatementList statements = new StatementList();
 
 			boolean isMethodDeclaration = false;
 
 			Token optionalVisibility = _currentToken;
-			if (acceptOptional(TokenType.Visibility) && optionalVisibility.getTokenText() == "public") {
-				tempField.isPrivate = false;
+			if (acceptOptional(TokenType.Visibility) && optionalVisibility.getTokenText() == "private") {
+				isPrivate = true;
 			}
 
-			tempField.isStatic = acceptOptional(TokenType.Access);
+			boolean isStatic = acceptOptional(TokenType.Access);
 
 			SourcePosition typePos = _currentToken.getTokenPosition();
 			if (acceptOptional(TokenType.Void)) {
 				isMethodDeclaration = true;
-				tempField.type = new BaseType(TypeKind.VOID, typePos);
+				type = new BaseType(TypeKind.VOID, typePos);
 			} else {
-				tempField.type = parseType();
+				type = parseType();
 			}
 			
-			tempField.name = _currentToken.getTokenText();
+			String id = _currentToken.getTokenText();
 			accept(TokenType.Identifier);
 
 			if (isMethodDeclaration || _currentToken.getTokenType() == TokenType.LParen) {
 				accept(TokenType.LParen);
 
 				if (!acceptOptional(TokenType.RParen)) {
-					tempMethod.parameterDeclList = parseParameters();
+					paramaters = parseParameters();
 					accept(TokenType.RParen);
 				}
 
 				accept(TokenType.LCurly);
 
-				tempMethod.statementList = parseMethodDeclaration();
+				statements = parseMethodDeclaration();
+
+				tempField = new FieldDecl(isPrivate, isStatic, type, id, _currentToken.getTokenPosition());
+				tempMethod = new MethodDecl(tempField, paramaters, statements, _currentToken.getTokenPosition());
 
 				Class.methodDeclList.add(tempMethod);
 			} else {
@@ -303,6 +309,9 @@ public class Parser {
 					exp = new CallExpr(reference, argumentList, curr.getTokenPosition());
 				}
 			}
+			else {
+				exp = new RefExpr(reference, curr.getTokenPosition());
+			}
 		}
 		else if (acceptOptional(TokenType.Num)) {
 			exp = new LiteralExpr(new IntLiteral(curr), curr.getTokenPosition());
@@ -361,10 +370,7 @@ public class Parser {
 				throw new SyntaxError();
 			}
 
-			ParameterDecl param = new ParameterDecl(null, null, _currentToken.getTokenPosition());
-
-			param.type = parseType();
-			param.name = _currentToken.getTokenText();
+			ParameterDecl param = new ParameterDecl(parseType(), _currentToken.getTokenText(), _currentToken.getTokenPosition());
 	
 			accept(TokenType.Identifier);
 			comma = acceptOptional(TokenType.Comma);
