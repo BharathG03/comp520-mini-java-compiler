@@ -283,7 +283,7 @@ public class Parser {
 				Expression intArrExp = parseExpression();
 				accept(TokenType.RBracket);
 
-				newExp = new NewArrayExpr(new ArrayType(new BaseType(TypeKind.INT, curr.getTokenPosition()), curr.getTokenPosition()), intArrExp, curr.getTokenPosition());
+				newExp = new NewArrayExpr(new BaseType(TypeKind.INT, curr.getTokenPosition()), intArrExp, curr.getTokenPosition());
 			}
 
 			exp = newExp;
