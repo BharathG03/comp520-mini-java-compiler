@@ -60,8 +60,8 @@ public class Parser {
 
 			boolean isMethodDeclaration = false;
 
-			Token optionalVisibility = _currentToken;
-			if (acceptOptional(TokenType.Visibility) && optionalVisibility.getTokenText() == "private") {
+			String optionalVisibility = _currentToken.getTokenText();
+			if (acceptOptional(TokenType.Visibility) && optionalVisibility.equals("private")) {
 				isPrivate = true;
 			}
 
@@ -218,12 +218,14 @@ public class Parser {
 				}
 			}
 			else if (acceptOptional(TokenType.LParen)) {
-				if (!acceptOptional(TokenType.RParen)) {
-					ExprList list = parseArgumentList();
-					accept(TokenType.RParen);
+				ExprList list = new ExprList();
 
-					statement = new CallStmt(reference, list, pos);
+				if (!acceptOptional(TokenType.RParen)) {
+					list = parseArgumentList();
+					accept(TokenType.RParen);
 				}
+					
+				statement = new CallStmt(reference, list, pos);
 			}
 			else {
 				Token idToken = _currentToken;
@@ -275,7 +277,7 @@ public class Parser {
 					Expression idArrExp = parseExpression();
 					accept(TokenType.RBracket);
 
-					newExp = new NewArrayExpr(new ArrayType(new ClassType(new Identifier(curr), curr.getTokenPosition()), curr.getTokenPosition()), idArrExp, curr.getTokenPosition());
+					newExp = new NewArrayExpr(new ClassType(new Identifier(curr), curr.getTokenPosition()), idArrExp, curr.getTokenPosition());
 				}
 			}
 			else {
@@ -305,12 +307,13 @@ public class Parser {
 
 				exp = new IxExpr(reference, ixExp, curr.getTokenPosition());
 			} else if (acceptOptional(TokenType.LParen)) {
+				ExprList argumentList = new ExprList();
 				if (!acceptOptional(TokenType.RParen)) {
-					ExprList argumentList = parseArgumentList();
+					argumentList = parseArgumentList();
 					accept(TokenType.RParen);
-
-					exp = new CallExpr(reference, argumentList, curr.getTokenPosition());
 				}
+
+				exp = new CallExpr(reference, argumentList, curr.getTokenPosition());
 			}
 			else {
 				exp = new RefExpr(reference, curr.getTokenPosition());
