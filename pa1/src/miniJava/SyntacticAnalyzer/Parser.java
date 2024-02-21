@@ -343,6 +343,8 @@ public class Parser {
 
 			Expression rightExpr = parseAndOperator();
 			leftExpr = new BinaryExpr(new Operator(operator), leftExpr, rightExpr, pos);
+
+			operator = _currentToken;
 		}
 
 		return leftExpr;
@@ -358,6 +360,8 @@ public class Parser {
 
 			Expression rightExpr = parseEquality();
 			leftExpr = new BinaryExpr(new Operator(operator), leftExpr, rightExpr, pos);
+
+			operator = _currentToken;
 		}
 
 		return leftExpr;
@@ -371,6 +375,8 @@ public class Parser {
 		while (acceptOptional(TokenType.Equality) || acceptOptional(TokenType.NotEquality)) {
 			Expression rightExpr = parseComparators();
 			leftExpr = new BinaryExpr(new Operator(operator), leftExpr, rightExpr, pos);
+
+			operator = _currentToken;
 		}
 
 		return leftExpr;
@@ -384,6 +390,8 @@ public class Parser {
 		while (acceptOptional(TokenType.Comparator)) {
 			Expression rightExpr = parseAdditive();
 			leftExpr = new BinaryExpr(new Operator(operator), leftExpr, rightExpr, pos);
+
+			operator = _currentToken;
 		}
 
 		return leftExpr;
@@ -401,6 +409,8 @@ public class Parser {
 
 			Expression rightExpr = parseMultiplicative();
 			leftExpr = new BinaryExpr(new Operator(operator), leftExpr, rightExpr, pos);
+
+			operator = _currentToken;
 		}
 
 		return leftExpr;
@@ -416,6 +426,8 @@ public class Parser {
 
 			Expression rightExpr = parseExpression();
 			leftExpr = new BinaryExpr(new Operator(operator), leftExpr, rightExpr, pos);
+
+			operator = _currentToken;
 		}
 
 		return leftExpr;
