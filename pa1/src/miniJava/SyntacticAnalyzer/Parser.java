@@ -122,7 +122,7 @@ public class Parser {
 
 		if (acceptOptional(TokenType.Return)) {
 			if (_currentToken.getTokenType() != TokenType.Semicolon) {
-				expression = parseExpression();
+				expression = parseOrOperator();
 			}
 			accept(TokenType.Semicolon);
 			
@@ -132,7 +132,7 @@ public class Parser {
 			Statement whileStmt = null;
 
 			accept(TokenType.LParen);
-			expression = parseExpression();
+			expression = parseOrOperator();
 			accept(TokenType.RParen);
 			
 			if (!acceptOptional(TokenType.LCurly)) {
@@ -154,7 +154,7 @@ public class Parser {
 			Statement elseStmt = null;
 
 			accept(TokenType.LParen);
-			expression = parseExpression();
+			expression = parseOrOperator();
 			accept(TokenType.RParen);
 			
 			if (acceptOptional(TokenType.LCurly)) {
@@ -192,15 +192,15 @@ public class Parser {
 			Statement statement = null;
 
 			if (acceptOptional(TokenType.Assignment)) {
-				Expression assignExpression = parseExpression();
+				Expression assignExpression = parseOrOperator();
 				statement = new AssignStmt(reference, assignExpression, pos);
 			}
 			else if (acceptOptional(TokenType.LBracket)) {
 				if (!acceptOptional(TokenType.RBracket)) {
-					Expression ex1 = parseExpression();
+					Expression ex1 = parseOrOperator();
 					accept(TokenType.RBracket);
 					accept(TokenType.Assignment);
-					Expression ex2 = parseExpression();
+					Expression ex2 = parseOrOperator();
 
 					statement = new IxAssignStmt(reference, ex1, ex2, pos);
 				}
@@ -209,7 +209,7 @@ public class Parser {
 
 					accept(TokenType.Identifier);
 					accept(TokenType.Assignment);
-					Expression valDecal = parseExpression();
+					Expression valDecal = parseOrOperator();
 
 					statement = new VarDeclStmt(
 							new VarDecl(new ArrayType(new ClassType(new Identifier(curr),
@@ -232,7 +232,7 @@ public class Parser {
 
 				accept(TokenType.Identifier);
 				accept(TokenType.Assignment);
-				Expression valDecal = parseExpression();
+				Expression valDecal = parseOrOperator();
 
 				statement = new VarDeclStmt(new VarDecl(new ClassType(new Identifier(curr), pos), idToken.getTokenText(), pos),valDecal, pos);
 			}
@@ -247,7 +247,7 @@ public class Parser {
 			accept(TokenType.Identifier);
 			accept(TokenType.Assignment);
 
-			Expression valDecal = parseExpression();
+			Expression valDecal = parseOrOperator();
 			accept(TokenType.Semicolon);
 
 			return new VarDeclStmt(
@@ -330,17 +330,95 @@ public class Parser {
 			throw new SyntaxError();
 		}
 
-		TokenType[] binop = { TokenType.Operator, TokenType.LogicalBiOperator, TokenType.Minus, TokenType.Equality,
-				TokenType.NotEquality, TokenType.Comparator };
+		return exp;
+	}
 
-		Token binopToken = _currentToken;
+	private Expression parseOrOperator() {
+		SourcePosition pos = _currentToken.getTokenPosition();
+		Expression leftExpr = parseAndOperator();
 
-		if (acceptMultipleOptional(binop) != null) {
-			Expression binopExp = parseExpression();
-			return new BinaryExpr(new Operator(binopToken), exp, binopExp, curr.getTokenPosition());
+		Token operator = _currentToken;
+		while (_currentToken.getTokenText().equals("||")) {
+			accept(TokenType.LogicalBiOperator);
+
+			Expression rightExpr = parseAndOperator();
+			leftExpr = new BinaryExpr(new Operator(operator), leftExpr, rightExpr, pos);
 		}
 
-		return exp;
+		return leftExpr;
+	}
+
+	private Expression parseAndOperator() {
+		SourcePosition pos = _currentToken.getTokenPosition();
+		Expression leftExpr = parseEquality();
+
+		Token operator = _currentToken;
+		while (_currentToken.getTokenText().equals("&&")) {
+			accept(TokenType.LogicalBiOperator);
+
+			Expression rightExpr = parseEquality();
+			leftExpr = new BinaryExpr(new Operator(operator), leftExpr, rightExpr, pos);
+		}
+
+		return leftExpr;
+	}
+
+	private Expression parseEquality() {
+		SourcePosition pos = _currentToken.getTokenPosition();
+		Expression leftExpr = parseComparators();
+
+		Token operator = _currentToken;
+		while (acceptOptional(TokenType.Equality) || acceptOptional(TokenType.NotEquality)) {
+			Expression rightExpr = parseComparators();
+			leftExpr = new BinaryExpr(new Operator(operator), leftExpr, rightExpr, pos);
+		}
+
+		return leftExpr;
+	}
+
+	private Expression parseComparators() {
+		SourcePosition pos = _currentToken.getTokenPosition();
+		Expression leftExpr = parseAdditive();
+
+		Token operator = _currentToken;
+		while (acceptOptional(TokenType.Comparator)) {
+			Expression rightExpr = parseAdditive();
+			leftExpr = new BinaryExpr(new Operator(operator), leftExpr, rightExpr, pos);
+		}
+
+		return leftExpr;
+	}
+
+	private Expression parseAdditive() {
+		SourcePosition pos = _currentToken.getTokenPosition();
+		Expression leftExpr = parseMultiplicative();
+
+		Token operator = _currentToken;
+		while (_currentToken.getTokenText().equals("+") || _currentToken.getTokenText().equals("-")) {
+			if (!acceptOptional(TokenType.Operator)) {
+				accept(TokenType.Minus);
+			}
+
+			Expression rightExpr = parseMultiplicative();
+			leftExpr = new BinaryExpr(new Operator(operator), leftExpr, rightExpr, pos);
+		}
+
+		return leftExpr;
+	}
+
+	private Expression parseMultiplicative() {
+		SourcePosition pos = _currentToken.getTokenPosition();
+		Expression leftExpr = parseExpression();
+
+		Token operator = _currentToken;
+		while (_currentToken.getTokenText().equals("*") || _currentToken.getTokenText().equals("/")) {
+			accept(TokenType.Operator);
+
+			Expression rightExpr = parseExpression();
+			leftExpr = new BinaryExpr(new Operator(operator), leftExpr, rightExpr, pos);
+		}
+
+		return leftExpr;
 	}
 
 	private TypeDenoter parseType() {
