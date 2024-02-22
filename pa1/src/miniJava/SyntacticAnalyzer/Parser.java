@@ -522,7 +522,7 @@ public class Parser {
 				throw new SyntaxError();
 			}
 
-			list.add(parseExpression());
+			list.add(parseOrOperator());
 			comma = acceptOptional(TokenType.Comma);
 		}
 
@@ -558,17 +558,6 @@ public class Parser {
 
 		_errors.reportError("Syntax Error: Unexpected token " + _currentToken.getTokenType() + " detected on " + _currentToken.getTokenPosition().toString());
 		throw new SyntaxError();
-	}
-	
-	private TokenType acceptMultipleOptional(TokenType[] expectedTypes) {
-		for (TokenType expectedType : expectedTypes) {
-			if (_currentToken.getTokenType() == expectedType) {
-				_currentToken = _scanner.scan();
-				return _currentToken.getTokenType();
-			}
-		}
-
-		return null;
 	}
 
 	private boolean acceptOptional(TokenType expectedType) {
