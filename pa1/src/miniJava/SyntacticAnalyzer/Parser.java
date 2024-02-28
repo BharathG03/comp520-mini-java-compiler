@@ -295,7 +295,7 @@ public class Parser {
 			accept(TokenType.RParen);
 		}
 		else if (acceptOptional(TokenType.Minus) || acceptOptional(TokenType.LogicalUnOperator)) {
-			Expression unopExp = parseOrOperator();
+			Expression unopExp = parseExpression();
 			exp = new UnaryExpr(new Operator(curr), unopExp, curr.getTokenPosition());
 		}
 		else if (_currentToken.getTokenType() == TokenType.Identifier || _currentToken.getTokenType() == TokenType.This) {
