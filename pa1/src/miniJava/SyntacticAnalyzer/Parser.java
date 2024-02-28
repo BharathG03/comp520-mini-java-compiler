@@ -274,7 +274,7 @@ public class Parser {
 				}
 				else {
 					accept(TokenType.LBracket);
-					Expression idArrExp = parseExpression();
+					Expression idArrExp = parseOrOperator();
 					accept(TokenType.RBracket);
 
 					newExp = new NewArrayExpr(new ClassType(new Identifier(curr), curr.getTokenPosition()), idArrExp, curr.getTokenPosition());
@@ -282,7 +282,7 @@ public class Parser {
 			}
 			else {
 				accept(TokenType.LBracket);
-				Expression intArrExp = parseExpression();
+				Expression intArrExp = parseOrOperator();
 				accept(TokenType.RBracket);
 
 				newExp = new NewArrayExpr(new BaseType(TypeKind.INT, curr.getTokenPosition()), intArrExp, curr.getTokenPosition());
@@ -291,18 +291,18 @@ public class Parser {
 			exp = newExp;
 		}
 		else if (acceptOptional(TokenType.LParen)) {
-			exp = parseExpression();
+			exp = parseOrOperator();
 			accept(TokenType.RParen);
 		}
 		else if (acceptOptional(TokenType.Minus) || acceptOptional(TokenType.LogicalUnOperator)) {
-			Expression unopExp = parseExpression();
+			Expression unopExp = parseOrOperator();
 			exp = new UnaryExpr(new Operator(curr), unopExp, curr.getTokenPosition());
 		}
 		else if (_currentToken.getTokenType() == TokenType.Identifier || _currentToken.getTokenType() == TokenType.This) {
 			Reference reference = parseReference();
 
 			if (acceptOptional(TokenType.LBracket)) {
-				Expression ixExp = parseExpression();
+				Expression ixExp = parseOrOperator();
 				accept(TokenType.RBracket);
 
 				exp = new IxExpr(reference, ixExp, curr.getTokenPosition());
