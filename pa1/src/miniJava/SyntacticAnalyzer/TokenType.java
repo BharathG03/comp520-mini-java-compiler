@@ -16,7 +16,7 @@ package miniJava.SyntacticAnalyzer;
 public enum TokenType {
     Class, Visibility, Access, Void, This, Return, New,
     Identifier, 
-    Int, Boolean,
+    Int, Boolean, Null,
     If, Else, While,
     Minus, Operator, Dot, Comma, Semicolon,
     Num,

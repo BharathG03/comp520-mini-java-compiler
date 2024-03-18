@@ -23,6 +23,7 @@ public class TokenMap {
         map.put("while", TokenType.While);
         map.put("true", TokenType.Logic);
         map.put("false", TokenType.Logic);
+        map.put("null", TokenType.Null);
     }
 
     public TokenType getTokenType(String s) {
