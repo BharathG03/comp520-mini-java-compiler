@@ -9,15 +9,18 @@ import java.util.Stack;
 
 public class Identification implements Visitor<Object,Object> {
 	private ErrorReporter _errors;
-    private Map<String, ClassDecl> classDeclMap;
-    private Map<String, MemberDecl> memberDeclMap;
-    private Map<String, LocalDecl> localDeclMap;
+
+    private Map<String, Map<String, Map<String, Declaration>>> IDTable = new HashMap<>();
+    private Map<String, Map<String, Declaration>> memberDeclMap;
+    private Map<String, Declaration> localDeclMap;
+    private String currClass = "";
+    private Map<String, Map<String, Declaration>> helperMap;
+    
     private Stack<String> localAssigns;
+    private Stack<String> privateValues;
 	
 	public Identification(ErrorReporter errors) {
 		this._errors = errors;
-		this.classDeclMap = new HashMap<>();
-
 	}
 	
 	public void parse( Package prog ) {
@@ -50,17 +53,20 @@ public class Identification implements Visitor<Object,Object> {
         String pfx = arg + "  . ";
 
         for (ClassDecl c : prog.classDeclList) {
-            if (classDeclMap.containsKey(c.name)) {
+            if (IDTable.containsKey(c.name)) {
                 _errors.reportError("Duplication Declaration of class " + c.name);
                 return null;
             }
 
-            classDeclMap.put(c.name, c);
+            IDTable.put(c.name, null);
         }
 
         for (ClassDecl c : prog.classDeclList) {
             this.memberDeclMap = new HashMap<>();
+            this.currClass = c.name;
+            this.helperMap = null;
             c.visit(this, pfx);
+            IDTable.replace(c.name, this.memberDeclMap);
         }
         return null;
     }
@@ -74,7 +80,7 @@ public class Identification implements Visitor<Object,Object> {
                 return null;
             }
 
-            memberDeclMap.put(f.name, f);
+            memberDeclMap.put(f.name, null);
         }
 
         for (MethodDecl m : cd.methodDeclList) {
@@ -83,7 +89,7 @@ public class Identification implements Visitor<Object,Object> {
                 return null;
             }
 
-            memberDeclMap.put(m.name, m);
+            memberDeclMap.put(m.name, null);
         }
 
         for (MethodDecl m : cd.methodDeclList) {
@@ -92,11 +98,13 @@ public class Identification implements Visitor<Object,Object> {
             m.visit(this, pfx);
 
             while (!this.localAssigns.empty()) {
-                if (!this.localAssigns.contains(this.localAssigns.peek())) {
+                if (!this.localDeclMap.containsKey(this.localAssigns.peek()) && !this.memberDeclMap.containsKey(this.localAssigns.peek())) {
                     _errors.reportError("Local variable " + this.localAssigns.peek() + " cannot be found");
                 }
                 this.localAssigns.pop();
             }
+
+            memberDeclMap.replace(m.name, localDeclMap);
         }
 
         return null;
@@ -113,6 +121,12 @@ public class Identification implements Visitor<Object,Object> {
 
         String pfx = ((String) arg) + "  . ";
 
+        ParameterDeclList pdl = md.parameterDeclList;
+
+        for (ParameterDecl pd : pdl) {
+            pd.visit(this, pfx);
+        }
+
         for (Statement s : sl) {
             s.visit(this, pfx);
         }
@@ -121,6 +135,13 @@ public class Identification implements Visitor<Object,Object> {
 
     @Override
     public Object visitParameterDecl(ParameterDecl pd, Object arg) {
+        if (localDeclMap.containsKey(pd.name)) {
+            _errors.reportError("Local variable " + pd.name + " declared multiple times");
+            return null;
+        }
+
+        localDeclMap.put(pd.name, null);
+
         return null;
     }
 
@@ -136,6 +157,10 @@ public class Identification implements Visitor<Object,Object> {
 
     @Override
     public Object visitClassType(ClassType type, Object arg) {
+        if (!IDTable.containsKey(type.className.spelling)) {
+            _errors.reportError("Object of type " + type.className + " cannot be created");
+        }
+
         return null;
     }
 
@@ -165,85 +190,132 @@ public class Identification implements Visitor<Object,Object> {
         }
 
         localDeclMap.put(name, stmt.varDecl);
+        stmt.initExp.visit(this, indent((String) arg));
         return null;
     }
 
     @Override
     public Object visitAssignStmt(AssignStmt stmt, Object arg) {
-        stmt.ref.visit(this, arg);
+        stmt.ref.visit(this, arg + "  ");
+        stmt.val.visit(this, arg + "  ");
         return null;
     }
 
     @Override
     public Object visitIxAssignStmt(IxAssignStmt stmt, Object arg) {
-        stmt.ref.visit(this, arg);
+        stmt.ref.visit(this, indent((String) arg));
+        stmt.ix.visit(this, indent((String) arg));
+        stmt.exp.visit(this, indent((String) arg));
         return null;
     }
 
     @Override
     public Object visitCallStmt(CallStmt stmt, Object arg) {
         stmt.methodRef.visit(this, arg);
+
+        ExprList al = stmt.argList;
+        String pfx = arg + "  . ";
+        for (Expression e : al) {
+            e.visit(this, pfx);
+        }
+
         return null;
     }
 
     @Override
     public Object visitReturnStmt(ReturnStmt stmt, Object arg) {
+        stmt.returnExpr.visit(this, indent((String) arg));
+
         return null;
     }
 
     @Override
     public Object visitIfStmt(IfStmt stmt, Object arg) {
+        stmt.cond.visit(this, indent((String) arg));
+        stmt.thenStmt.visit(this, indent((String) arg));
+
+        if (stmt.elseStmt != null)
+            stmt.elseStmt.visit(this, indent((String) arg));
+
         return null;
     }
 
     @Override
     public Object visitWhileStmt(WhileStmt stmt, Object arg) {
+        stmt.cond.visit(this, indent((String) arg));
+        stmt.body.visit(this, indent((String) arg));
+
         return null;
     }
 
     @Override
     public Object visitUnaryExpr(UnaryExpr expr, Object arg) {
+        expr.expr.visit(this, indent((String) arg));
+        
         return null;
     }
 
     @Override
     public Object visitBinaryExpr(BinaryExpr expr, Object arg) {
+        expr.left.visit(this, indent((String) arg));
+        expr.right.visit(this, indent((String) arg));
+
         return null;
     }
 
     @Override
     public Object visitRefExpr(RefExpr expr, Object arg) {
+        expr.ref.visit(this, indent((String) arg));
+
         return null;
     }
 
     @Override
     public Object visitIxExpr(IxExpr expr, Object arg) {
+        expr.ref.visit(this, indent((String) arg));
+        expr.ixExpr.visit(this, indent((String) arg));
+
         return null;
     }
 
     @Override
     public Object visitCallExpr(CallExpr expr, Object arg) {
+        expr.functionRef.visit(this, indent((String) arg));
+        ExprList al = expr.argList;
+        String pfx = arg + "  . ";
+        for (Expression e : al) {
+            e.visit(this, pfx);
+        }
+
         return null;
     }
 
     @Override
     public Object visitLiteralExpr(LiteralExpr expr, Object arg) {
+        expr.lit.visit(this, indent((String) arg));
+
         return null;
     }
 
     @Override
     public Object visitNewObjectExpr(NewObjectExpr expr, Object arg) {
+        expr.classtype.visit(this, indent((String) arg));
+
         return null;
     }
 
     @Override
     public Object visitNewArrayExpr(NewArrayExpr expr, Object arg) {
+        expr.eltType.visit(this, indent((String) arg));
+        expr.sizeExpr.visit(this, indent((String) arg));
+        
         return null;
     }
 
     @Override
     public Object visitThisRef(ThisRef ref, Object arg) {
-        return null;
+        this.helperMap = IDTable.get(this.currClass);
+        return this.helperMap;
     }
 
     @Override
@@ -254,7 +326,23 @@ public class Identification implements Visitor<Object,Object> {
 
     @Override
     public Object visitQRef(QualRef ref, Object arg) {
-        this.localAssigns.push(ref.id.spelling);
+        Object temp = ref.ref.visit(this, indent((String) arg));
+
+        if (temp == null) {
+            String id = this.localAssigns.pop();
+
+            if (!IDTable.containsKey(id)) {
+                _errors.reportError("Invalid Identifier Found");
+                return null;
+            }
+
+            this.helperMap = IDTable.get(id);
+        }
+        
+        if (!this.helperMap.containsKey(ref.id.spelling)) {
+            _errors.reportError("Invalid Identifier Found");
+        }
+
         return null;
     }
 
@@ -281,5 +369,9 @@ public class Identification implements Visitor<Object,Object> {
     @Override
     public Object visitNullLiteral(NullLiteral bool, Object arg) {
         return null;
+    }
+
+    private String indent(String prefix) {
+        return prefix + "  ";
     }
 }
