@@ -8,9 +8,16 @@ package miniJava.AbstractSyntaxTrees;
 import miniJava.SyntacticAnalyzer.Token;
 
 public class Identifier extends Terminal {
+  public Token type;
 
   public Identifier (Token t) {
     super (t);
+    this.type = null;
+  }
+
+  public Identifier(Token t, Token type) {
+    super(t);
+    this.type = type;
   }
 
   public <A,R> R visit(Visitor<A,R> v, A o) {

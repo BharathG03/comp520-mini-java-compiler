@@ -72,12 +72,14 @@ public class Parser {
 			}
 
 			boolean isStatic = acceptOptional(TokenType.Access);
+			String className = null;
 
 			SourcePosition typePos = _currentToken.getTokenPosition();
 			if (acceptOptional(TokenType.Void)) {
 				isMethodDeclaration = true;
 				type = new BaseType(TypeKind.VOID, typePos);
 			} else {
+				className = _currentToken.getTokenText();
 				type = parseType();
 			}
 			
@@ -96,12 +98,12 @@ public class Parser {
 
 				statements = parseMethodDeclaration();
 
-				tempField = new FieldDecl(isPrivate, isStatic, type, id, _currentToken.getTokenPosition());
+				tempField = new FieldDecl(isPrivate, isStatic, type, id, _currentToken.getTokenPosition(), className);
 				tempMethod = new MethodDecl(tempField, paramaters, statements, _currentToken.getTokenPosition());
 
 				Class.methodDeclList.add(tempMethod);
 			} else {
-				tempField = new FieldDecl(isPrivate, isStatic, type, id, _currentToken.getTokenPosition());
+				tempField = new FieldDecl(isPrivate, isStatic, type, id, _currentToken.getTokenPosition(), className);
 
 				accept(TokenType.Semicolon);
 				Class.fieldDeclList.add(tempField);

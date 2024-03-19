@@ -10,11 +10,11 @@ import java.util.Stack;
 public class Identification implements Visitor<Object,Object> {
 	private ErrorReporter _errors;
 
-    private Map<String, Map<String, Map<String, Declaration>>> IDTable = new HashMap<>();
-    private Map<String, Map<String, Declaration>> memberDeclMap;
+    private Map<String, Map<Declaration, Map<String, Declaration>>> IDTable = new HashMap<>();
+    private Map<Declaration, Map<String, Declaration>> memberDeclMap;
     private Map<String, Declaration> localDeclMap;
     private String currClass = "";
-    private Map<String, Map<String, Declaration>> helperMap;
+    private Map<Declaration, Map<String, Declaration>> helperMap;
     
     private Stack<String> localAssigns;
     private Stack<String> privateValues;
@@ -62,21 +62,21 @@ public class Identification implements Visitor<Object,Object> {
             IDTable.put(c.name, this.memberDeclMap);
 
             for (FieldDecl f : c.fieldDeclList) {
-                if (memberDeclMap.containsKey(f.name)) {
+                if (memberDeclMap.containsKey(f)) {
                     _errors.reportError("Duplication Declaration of member " + f.name);
                     return null;
                 }
 
-                memberDeclMap.put(f.name, null);
+                memberDeclMap.put(f, null);
             }
 
             for (MethodDecl m : c.methodDeclList) {
-                if (memberDeclMap.containsKey(m.name)) {
+                if (memberDeclMap.containsKey(m)) {
                     _errors.reportError("Duplication Declaration of member " + m.name);
                     return null;
                 }
 
-                memberDeclMap.put(m.name, null);
+                memberDeclMap.put(m, null);
             }
         }
 
@@ -86,6 +86,16 @@ public class Identification implements Visitor<Object,Object> {
             c.visit(this, pfx);
         }
         return null;
+    }
+
+    private boolean containsHelper(Map<Declaration, Map<String, Declaration>> temp, String searchKey) {
+        for (Declaration key : temp.keySet()) {
+            if (key.name.equals(searchKey)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     @Override
@@ -98,13 +108,13 @@ public class Identification implements Visitor<Object,Object> {
             m.visit(this, pfx);
 
             while (!this.localAssigns.empty()) {
-                if (!this.localDeclMap.containsKey(this.localAssigns.peek()) && !this.memberDeclMap.containsKey(this.localAssigns.peek())) {
+                if (!this.localDeclMap.containsKey(this.localAssigns.peek()) && !containsHelper(this.IDTable.get(cd.name), this.localAssigns.peek())) {
                     _errors.reportError("Local variable " + this.localAssigns.peek() + " cannot be found");
                 }
                 this.localAssigns.pop();
             }
 
-            memberDeclMap.replace(m.name, localDeclMap);
+            memberDeclMap.replace(m, localDeclMap);
         }
 
         return null;
@@ -327,21 +337,26 @@ public class Identification implements Visitor<Object,Object> {
 
     @Override
     public Object visitQRef(QualRef ref, Object arg) {
-        Object temp = ref.ref.visit(this, indent((String) arg));
+        ref.ref.visit(this, indent((String) arg));
 
-        String id = this.localAssigns.pop();
+        if (this.helperMap == null) {
+            String id = this.localAssigns.pop();
 
-        if (temp == null) {
             if (!IDTable.containsKey(id)) {
                 _errors.reportError("Invalid Identifier Found");
                 return null;
             }
-
             this.helperMap = IDTable.get(id);
-        }
+        } 
         
-        if (this.helperMap == null || !this.helperMap.containsKey(ref.id.spelling)) {
+        if (!containsHelper(helperMap, ref.id.spelling)) {
             _errors.reportError("Invalid Identifier Found");
+        } else {
+            for (Declaration key : this.helperMap.keySet()) {
+                if (key.name.equals(ref.id.spelling)) {
+                    this.helperMap = IDTable.get(((FieldDecl) key).className);
+                }
+            }
         }
 
         return null;
