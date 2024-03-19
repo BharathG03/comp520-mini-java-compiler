@@ -53,20 +53,37 @@ public class Identification implements Visitor<Object,Object> {
         String pfx = arg + "  . ";
 
         for (ClassDecl c : prog.classDeclList) {
+            this.memberDeclMap = new HashMap<>();
+
             if (IDTable.containsKey(c.name)) {
                 _errors.reportError("Duplication Declaration of class " + c.name);
                 return null;
             }
+            IDTable.put(c.name, this.memberDeclMap);
 
-            IDTable.put(c.name, null);
+            for (FieldDecl f : c.fieldDeclList) {
+                if (memberDeclMap.containsKey(f.name)) {
+                    _errors.reportError("Duplication Declaration of member " + f.name);
+                    return null;
+                }
+
+                memberDeclMap.put(f.name, null);
+            }
+
+            for (MethodDecl m : c.methodDeclList) {
+                if (memberDeclMap.containsKey(m.name)) {
+                    _errors.reportError("Duplication Declaration of member " + m.name);
+                    return null;
+                }
+
+                memberDeclMap.put(m.name, null);
+            }
         }
 
         for (ClassDecl c : prog.classDeclList) {
-            this.memberDeclMap = new HashMap<>();
             this.currClass = c.name;
             this.helperMap = null;
             c.visit(this, pfx);
-            IDTable.replace(c.name, this.memberDeclMap);
         }
         return null;
     }
@@ -74,23 +91,6 @@ public class Identification implements Visitor<Object,Object> {
     @Override
     public Object visitClassDecl(ClassDecl cd, Object arg) {
         String pfx = arg + "  . ";
-        for (FieldDecl f : cd.fieldDeclList) {
-            if (memberDeclMap.containsKey(f.name)) {
-                _errors.reportError("Duplication Declaration of member " + f.name);
-                return null;
-            }
-
-            memberDeclMap.put(f.name, null);
-        }
-
-        for (MethodDecl m : cd.methodDeclList) {
-            if (memberDeclMap.containsKey(m.name)) {
-                _errors.reportError("Duplication Declaration of member " + m.name);
-                return null;
-            }
-
-            memberDeclMap.put(m.name, null);
-        }
 
         for (MethodDecl m : cd.methodDeclList) {
             this.localDeclMap = new HashMap<>();
@@ -122,6 +122,7 @@ public class Identification implements Visitor<Object,Object> {
         String pfx = ((String) arg) + "  . ";
 
         ParameterDeclList pdl = md.parameterDeclList;
+        
 
         for (ParameterDecl pd : pdl) {
             pd.visit(this, pfx);
@@ -328,9 +329,9 @@ public class Identification implements Visitor<Object,Object> {
     public Object visitQRef(QualRef ref, Object arg) {
         Object temp = ref.ref.visit(this, indent((String) arg));
 
-        if (temp == null) {
-            String id = this.localAssigns.pop();
+        String id = this.localAssigns.pop();
 
+        if (temp == null) {
             if (!IDTable.containsKey(id)) {
                 _errors.reportError("Invalid Identifier Found");
                 return null;
@@ -339,7 +340,7 @@ public class Identification implements Visitor<Object,Object> {
             this.helperMap = IDTable.get(id);
         }
         
-        if (!this.helperMap.containsKey(ref.id.spelling)) {
+        if (this.helperMap == null || !this.helperMap.containsKey(ref.id.spelling)) {
             _errors.reportError("Invalid Identifier Found");
         }
 
