@@ -171,7 +171,7 @@ public class Identification implements Visitor<Object,Object> {
 
     @Override
     public Object visitClassType(ClassType type, Object arg) {
-        if (!IDTable.containsKey(type.className.spelling)) {
+        if (!type.className.spelling.equals("String") && !IDTable.containsKey(type.className.spelling)) {
             _errors.reportError("Object of type " + type.className.spelling + " cannot be created");
         }
 
