@@ -393,10 +393,10 @@ public class Identification implements Visitor<Object,Object> {
                 this.privates = privateValues.get(id);
             } else {
                 try {
-                    if (!localDeclMap.containsKey(id)) {
+                    if (localDeclMap.containsKey(id)) {
                         this.helperMap = IDTable.get(((VarDecl) localDeclMap.get(id)).className);
                         this.privates = new Stack<>();
-                    } else {
+                    } else if (containsHelper(this.memberDeclMap, id) != null) {
                         this.helperMap = IDTable.get(((FieldDecl) containsHelper(this.memberDeclMap, id)).className);
                         this.privates = new Stack<>();
                     }
