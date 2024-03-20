@@ -29,7 +29,7 @@ public class Compiler {
 			_errorReporter.outputErrors();
 		}
 		else {
-			astDisplay.showTree(ast);
+			//astDisplay.showTree(ast);
 			System.out.println("Success");
 		}
 	}
