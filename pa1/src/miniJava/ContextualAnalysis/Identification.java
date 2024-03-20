@@ -330,7 +330,9 @@ public class Identification implements Visitor<Object,Object> {
 
     @Override
     public Object visitRefExpr(RefExpr expr, Object arg) {
-        expr.ref.visit(this, indent((String) arg));
+        if (expr.ref.visit(this, indent((String) arg)).equals("MethodDecl")) {
+            throw new IdentificationError(expr, "Method cannot be used as a Field");
+        }
         this.helperMap = null;
 
         return null;
@@ -348,7 +350,10 @@ public class Identification implements Visitor<Object,Object> {
 
     @Override
     public Object visitCallExpr(CallExpr expr, Object arg) {
-        expr.functionRef.visit(this, indent((String) arg));
+        if (expr.functionRef.visit(this, indent((String) arg)).equals("FieldDecl")) {
+            throw new IdentificationError(expr, "Field Cannot be used as a method");
+        }
+
         this.helperMap = null;
 
         ExprList al = expr.argList;
@@ -397,7 +402,7 @@ public class Identification implements Visitor<Object,Object> {
             throw new IdentificationError(ref, currVariable + " cannot be used to declare itself");
         }
         this.localAssigns.push(ref.id.spelling);
-        return null;
+        return "VarDecl";
     }
 
     @Override
@@ -453,8 +458,10 @@ public class Identification implements Visitor<Object,Object> {
                 if (key.name.equals(ref.id.spelling)) {
                     try {
                         this.helperMap = IDTable.get(((FieldDecl) key).className);
+                        return key.toString();
                     } catch (Exception e) {
                         this.helperMap = new HashMap<>();
+                        return "MethodDecl";
                     }
                 }
             }
