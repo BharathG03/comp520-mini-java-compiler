@@ -5,6 +5,8 @@ import miniJava.AbstractSyntaxTrees.Package;
 import miniJava.SyntacticAnalyzer.Token;
 import miniJava.SyntacticAnalyzer.TokenType;
 import miniJava.AbstractSyntaxTrees.*;
+
+import java.lang.reflect.Field;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Stack;
@@ -114,6 +116,7 @@ public class Identification implements Visitor<Object,Object> {
         for (ClassDecl c : prog.classDeclList) {
             this.currClass = c.name;
             this.helperMap = null;
+            this.memberDeclMap = IDTable.get(c.name);
             c.visit(this, pfx);
         }
         return null;
@@ -233,6 +236,8 @@ public class Identification implements Visitor<Object,Object> {
     @Override
     public Object visitAssignStmt(AssignStmt stmt, Object arg) {
         stmt.ref.visit(this, arg + "  ");
+        this.helperMap = null;
+
         stmt.val.visit(this, arg + "  ");
         return null;
     }
@@ -240,6 +245,8 @@ public class Identification implements Visitor<Object,Object> {
     @Override
     public Object visitIxAssignStmt(IxAssignStmt stmt, Object arg) {
         stmt.ref.visit(this, indent((String) arg));
+        this.helperMap = null;
+
         stmt.ix.visit(this, indent((String) arg));
         stmt.exp.visit(this, indent((String) arg));
         return null;
@@ -248,6 +255,7 @@ public class Identification implements Visitor<Object,Object> {
     @Override
     public Object visitCallStmt(CallStmt stmt, Object arg) {
         stmt.methodRef.visit(this, arg);
+        this.helperMap = null;
 
         ExprList al = stmt.argList;
         String pfx = arg + "  . ";
@@ -302,6 +310,7 @@ public class Identification implements Visitor<Object,Object> {
     @Override
     public Object visitRefExpr(RefExpr expr, Object arg) {
         expr.ref.visit(this, indent((String) arg));
+        this.helperMap = null;
 
         return null;
     }
@@ -309,6 +318,8 @@ public class Identification implements Visitor<Object,Object> {
     @Override
     public Object visitIxExpr(IxExpr expr, Object arg) {
         expr.ref.visit(this, indent((String) arg));
+        this.helperMap = null;
+
         expr.ixExpr.visit(this, indent((String) arg));
 
         return null;
@@ -317,6 +328,8 @@ public class Identification implements Visitor<Object,Object> {
     @Override
     public Object visitCallExpr(CallExpr expr, Object arg) {
         expr.functionRef.visit(this, indent((String) arg));
+        this.helperMap = null;
+
         ExprList al = expr.argList;
         String pfx = arg + "  . ";
         for (Expression e : al) {
@@ -365,10 +378,12 @@ public class Identification implements Visitor<Object,Object> {
     public Object visitQRef(QualRef ref, Object arg) {
         Object temp = ref.ref.visit(this, indent((String) arg));
 
-        if (this.helperMap == null) {
-            String id = this.localAssigns.pop();
+        String id = "";
 
-            if (!IDTable.containsKey(id) && !localDeclMap.containsKey(id)) {
+        if (this.helperMap == null) {
+            id = this.localAssigns.pop();
+
+            if (!IDTable.containsKey(id) && containsHelper(this.memberDeclMap, id) == null && !localDeclMap.containsKey(id)) {
                 _errors.reportError("Invalid Identifier Found");
                 return null;
             }
@@ -378,8 +393,13 @@ public class Identification implements Visitor<Object,Object> {
                 this.privates = privateValues.get(id);
             } else {
                 try {
-                    this.helperMap = IDTable.get(((VarDecl) localDeclMap.get(id)).className);
-                    this.privates = new Stack<>();
+                    if (!localDeclMap.containsKey(id)) {
+                        this.helperMap = IDTable.get(((VarDecl) localDeclMap.get(id)).className);
+                        this.privates = new Stack<>();
+                    } else {
+                        this.helperMap = IDTable.get(((FieldDecl) containsHelper(this.memberDeclMap, id)).className);
+                        this.privates = new Stack<>();
+                    }
                 } catch (Exception e) {
                     this.helperMap = new HashMap<>();
                     this.privates = new Stack<>();
@@ -389,7 +409,7 @@ public class Identification implements Visitor<Object,Object> {
         
         if (containsHelper(helperMap, ref.id.spelling) == null) {
             _errors.reportError("Invalid Identifier Found");
-        } else if (temp == null && this.privates.contains(containsHelper(helperMap, ref.id.spelling))) {
+        } else if (temp == null && this.privates.contains(containsHelper(helperMap, ref.id.spelling)) && !currClass.equals(id)) {
             _errors.reportError("Invalid Identifier Found");
         } else {
             for (Declaration key : this.helperMap.keySet()) {
