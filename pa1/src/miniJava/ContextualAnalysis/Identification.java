@@ -17,7 +17,8 @@ public class Identification implements Visitor<Object,Object> {
     private Map<Declaration, Map<String, Declaration>> helperMap;
     
     private Stack<String> localAssigns;
-    private Stack<String> privateValues;
+    private Map<String, Stack<Declaration>> privateValues = new HashMap<>();
+    private Stack<Declaration> privates;
 	
 	public Identification(ErrorReporter errors) {
 		this._errors = errors;
@@ -54,6 +55,7 @@ public class Identification implements Visitor<Object,Object> {
 
         for (ClassDecl c : prog.classDeclList) {
             this.memberDeclMap = new HashMap<>();
+            this.privateValues.put(c.name, new Stack<>());
 
             if (IDTable.containsKey(c.name)) {
                 _errors.reportError("Duplication Declaration of class " + c.name);
@@ -62,18 +64,26 @@ public class Identification implements Visitor<Object,Object> {
             IDTable.put(c.name, this.memberDeclMap);
 
             for (FieldDecl f : c.fieldDeclList) {
-                if (memberDeclMap.containsKey(f)) {
+                if (containsHelper(memberDeclMap, f.name) != null) {
                     _errors.reportError("Duplication Declaration of member " + f.name);
                     return null;
+                }
+                
+                if (f.isPrivate) {
+                    this.privateValues.get(c.name).add(f);
                 }
 
                 memberDeclMap.put(f, null);
             }
 
             for (MethodDecl m : c.methodDeclList) {
-                if (memberDeclMap.containsKey(m)) {
+                if (containsHelper(memberDeclMap, m.name) != null) {
                     _errors.reportError("Duplication Declaration of member " + m.name);
                     return null;
+                }
+
+                if (m.isPrivate) {
+                    this.privateValues.get(c.name).add(m);
                 }
 
                 memberDeclMap.put(m, null);
@@ -88,16 +98,6 @@ public class Identification implements Visitor<Object,Object> {
         return null;
     }
 
-    private boolean containsHelper(Map<Declaration, Map<String, Declaration>> temp, String searchKey) {
-        for (Declaration key : temp.keySet()) {
-            if (key.name.equals(searchKey)) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
     @Override
     public Object visitClassDecl(ClassDecl cd, Object arg) {
         String pfx = arg + "  . ";
@@ -108,7 +108,7 @@ public class Identification implements Visitor<Object,Object> {
             m.visit(this, pfx);
 
             while (!this.localAssigns.empty()) {
-                if (!this.localDeclMap.containsKey(this.localAssigns.peek()) && !containsHelper(this.IDTable.get(cd.name), this.localAssigns.peek())) {
+                if (!this.localDeclMap.containsKey(this.localAssigns.peek()) && containsHelper(this.IDTable.get(cd.name), this.localAssigns.peek()) == null) {
                     _errors.reportError("Local variable " + this.localAssigns.peek() + " cannot be found");
                 }
                 this.localAssigns.pop();
@@ -151,6 +151,8 @@ public class Identification implements Visitor<Object,Object> {
             return null;
         }
 
+       pd.type.visit(this, indent((String) arg));
+
         localDeclMap.put(pd.name, null);
 
         return null;
@@ -158,6 +160,7 @@ public class Identification implements Visitor<Object,Object> {
 
     @Override
     public Object visitVarDecl(VarDecl decl, Object arg) {
+        decl.type.visit(this, indent((String) arg));
         return null;
     }
 
@@ -169,7 +172,7 @@ public class Identification implements Visitor<Object,Object> {
     @Override
     public Object visitClassType(ClassType type, Object arg) {
         if (!IDTable.containsKey(type.className.spelling)) {
-            _errors.reportError("Object of type " + type.className + " cannot be created");
+            _errors.reportError("Object of type " + type.className.spelling + " cannot be created");
         }
 
         return null;
@@ -177,6 +180,7 @@ public class Identification implements Visitor<Object,Object> {
 
     @Override
     public Object visitArrayType(ArrayType type, Object arg) {
+        type.eltType.visit(this, indent((String) arg));
         return null;
     }
 
@@ -326,6 +330,7 @@ public class Identification implements Visitor<Object,Object> {
     @Override
     public Object visitThisRef(ThisRef ref, Object arg) {
         this.helperMap = IDTable.get(this.currClass);
+        this.privates = privateValues.get(this.currClass);
         return this.helperMap;
     }
 
@@ -337,7 +342,7 @@ public class Identification implements Visitor<Object,Object> {
 
     @Override
     public Object visitQRef(QualRef ref, Object arg) {
-        ref.ref.visit(this, indent((String) arg));
+        Object temp = ref.ref.visit(this, indent((String) arg));
 
         if (this.helperMap == null) {
             String id = this.localAssigns.pop();
@@ -347,9 +352,12 @@ public class Identification implements Visitor<Object,Object> {
                 return null;
             }
             this.helperMap = IDTable.get(id);
+            this.privates = privateValues.get(id);
         } 
         
-        if (!containsHelper(helperMap, ref.id.spelling)) {
+        if (containsHelper(helperMap, ref.id.spelling) == null) {
+            _errors.reportError("Invalid Identifier Found");
+        } else if (temp == null && this.privates.contains(containsHelper(helperMap, ref.id.spelling))) {
             _errors.reportError("Invalid Identifier Found");
         } else {
             for (Declaration key : this.helperMap.keySet()) {
@@ -364,7 +372,7 @@ public class Identification implements Visitor<Object,Object> {
 
     @Override
     public Object visitIdentifier(Identifier id, Object arg) {
-        return null;
+        return id.spelling;
     }
 
     @Override
@@ -389,5 +397,15 @@ public class Identification implements Visitor<Object,Object> {
 
     private String indent(String prefix) {
         return prefix + "  ";
+    }
+
+    private Declaration containsHelper(Map<Declaration, Map<String, Declaration>> temp, String searchKey) {
+        for (Declaration key : temp.keySet()) {
+            if (key.name.equals(searchKey)) {
+                return key;
+            }
+        }
+
+        return null;
     }
 }
