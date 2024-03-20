@@ -17,8 +17,10 @@ public class Identification implements Visitor<Object,Object> {
     private Map<String, Map<Declaration, Map<String, Declaration>>> IDTable = new HashMap<>();
     private Map<Declaration, Map<String, Declaration>> memberDeclMap;
     private Map<String, Declaration> localDeclMap;
-    private String currClass = "";
     private Map<Declaration, Map<String, Declaration>> helperMap;
+    private String currClass = "";
+    private MethodDecl currMethod = null;
+    private String currVariable = null;
     
     private Stack<String> localAssigns;
     private Map<String, Stack<Declaration>> privateValues = new HashMap<>();
@@ -81,15 +83,13 @@ public class Identification implements Visitor<Object,Object> {
             this.privateValues.put(c.name, new Stack<>());
 
             if (IDTable.containsKey(c.name)) {
-                _errors.reportError("Duplication Declaration of class " + c.name);
-                return null;
+                throw new IdentificationError(c, "Duplication Declaration of class " + c.name);
             }
             IDTable.put(c.name, this.memberDeclMap);
 
             for (FieldDecl f : c.fieldDeclList) {
                 if (containsHelper(memberDeclMap, f.name) != null) {
-                    _errors.reportError("Duplication Declaration of member " + f.name);
-                    return null;
+                    throw new IdentificationError(c, "Duplication Declaration of member " + f.name);
                 }
                 
                 if (f.isPrivate) {
@@ -101,8 +101,7 @@ public class Identification implements Visitor<Object,Object> {
 
             for (MethodDecl m : c.methodDeclList) {
                 if (containsHelper(memberDeclMap, m.name) != null) {
-                    _errors.reportError("Duplication Declaration of member " + m.name);
-                    return null;
+                    throw new IdentificationError(c, "Duplication Declaration of member " + m.name);
                 }
 
                 if (m.isPrivate) {
@@ -126,14 +125,19 @@ public class Identification implements Visitor<Object,Object> {
     public Object visitClassDecl(ClassDecl cd, Object arg) {
         String pfx = arg + "  . ";
 
+        for (FieldDecl f : cd.fieldDeclList) {
+            f.visit(this, pfx);
+        }
+
         for (MethodDecl m : cd.methodDeclList) {
             this.localDeclMap = new HashMap<>();
             this.localAssigns = new Stack<String>();
+            this.currMethod = m;
             m.visit(this, pfx);
 
             while (!this.localAssigns.empty()) {
                 if (!this.localDeclMap.containsKey(this.localAssigns.peek()) && containsHelper(this.IDTable.get(cd.name), this.localAssigns.peek()) == null) {
-                    _errors.reportError("Local variable " + this.localAssigns.peek() + " cannot be found");
+                    throw new IdentificationError(m, "Local variable " + this.localAssigns.peek() + " cannot be found");
                 }
                 this.localAssigns.pop();
             }
@@ -146,6 +150,9 @@ public class Identification implements Visitor<Object,Object> {
 
     @Override
     public Object visitFieldDecl(FieldDecl fd, Object arg) {
+        if (fd.type.typeKind == TypeKind.CLASS && !IDTable.containsKey(fd.className)) {
+            throw new IdentificationError(fd, fd.className + " is not a valid class type");
+        }
         return null;
     }
 
@@ -171,8 +178,7 @@ public class Identification implements Visitor<Object,Object> {
     @Override
     public Object visitParameterDecl(ParameterDecl pd, Object arg) {
         if (localDeclMap.containsKey(pd.name)) {
-            _errors.reportError("Local variable " + pd.name + " declared multiple times");
-            return null;
+            throw new IdentificationError(pd, "Local variable " + pd.name + " declared multiple times");
         }
 
        pd.type.visit(this, indent((String) arg));
@@ -196,7 +202,10 @@ public class Identification implements Visitor<Object,Object> {
     @Override
     public Object visitClassType(ClassType type, Object arg) {
         if (!type.className.spelling.equals("String") && !IDTable.containsKey(type.className.spelling)) {
-            _errors.reportError("Object of type " + type.className.spelling + " cannot be created");
+            throw new IdentificationError(type, "Object of type " + type.className.spelling + " cannot be created");
+        }
+        if (type.className.spelling.equals(currVariable)) {
+            throw new IdentificationError(type, currVariable + "cannot be used to declare itself");
         }
 
         return null;
@@ -212,11 +221,12 @@ public class Identification implements Visitor<Object,Object> {
     public Object visitBlockStmt(BlockStmt stmt, Object arg) {
         StatementList sl = stmt.sl;
         String pfx = arg + "  . ";
+        Object temp = null;
 
         for (Statement s : sl) {
-            s.visit(this, pfx);
+            temp = s.visit(this, pfx);
         }
-        return null;
+        return temp;
     }
 
     @Override
@@ -224,13 +234,14 @@ public class Identification implements Visitor<Object,Object> {
         String name = stmt.varDecl.name;
 
         if (localDeclMap.containsKey(name)) {
-            _errors.reportError("Local variable " + name + " declared multiple times");
-            return null;
+            throw new IdentificationError(stmt, "Local variable " + name + " declared multiple times");
         }
 
         localDeclMap.put(name, stmt.varDecl);
+        this.currVariable = name;
         stmt.initExp.visit(this, indent((String) arg));
-        return null;
+        this.currVariable = null;
+        return 1;
     }
 
     @Override
@@ -257,6 +268,10 @@ public class Identification implements Visitor<Object,Object> {
         stmt.methodRef.visit(this, arg);
         this.helperMap = null;
 
+        if (stmt.methodRef.toString().equals("ThisRef")) {
+            throw new IdentificationError(stmt, "'this' is not a valid function name");
+        }
+
         ExprList al = stmt.argList;
         String pfx = arg + "  . ";
         for (Expression e : al) {
@@ -276,10 +291,14 @@ public class Identification implements Visitor<Object,Object> {
     @Override
     public Object visitIfStmt(IfStmt stmt, Object arg) {
         stmt.cond.visit(this, indent((String) arg));
-        stmt.thenStmt.visit(this, indent((String) arg));
+        if (stmt.thenStmt.visit(this, indent((String) arg)) != null) {
+            throw new IdentificationError(stmt, "Can't Initialize variable in If Statement");
+        }
 
         if (stmt.elseStmt != null)
-            stmt.elseStmt.visit(this, indent((String) arg));
+            if (stmt.elseStmt.visit(this, indent((String) arg)) != null) {
+                throw new IdentificationError(stmt, "Can't Initialize variable in Else Statement");
+            }
 
         return null;
     }
@@ -287,7 +306,9 @@ public class Identification implements Visitor<Object,Object> {
     @Override
     public Object visitWhileStmt(WhileStmt stmt, Object arg) {
         stmt.cond.visit(this, indent((String) arg));
-        stmt.body.visit(this, indent((String) arg));
+        if (stmt.body.visit(this, indent((String) arg)) != null) {
+            throw new IdentificationError(stmt, "Can't declare variable in while loops");
+        }
 
         return null;
     }
@@ -342,7 +363,6 @@ public class Identification implements Visitor<Object,Object> {
     @Override
     public Object visitLiteralExpr(LiteralExpr expr, Object arg) {
         expr.lit.visit(this, indent((String) arg));
-
         return null;
     }
 
@@ -363,6 +383,9 @@ public class Identification implements Visitor<Object,Object> {
 
     @Override
     public Object visitThisRef(ThisRef ref, Object arg) {
+        if (currMethod.isStatic) {
+            throw new IdentificationError(ref, "Cannot reference 'this' within a static context");
+        }
         this.helperMap = IDTable.get(this.currClass);
         this.privates = privateValues.get(this.currClass);
         return this.helperMap;
@@ -370,6 +393,9 @@ public class Identification implements Visitor<Object,Object> {
 
     @Override
     public Object visitIdRef(IdRef ref, Object arg) {
+        if (this.helperMap == null && ref.id.spelling.equals(currVariable)) {
+            throw new IdentificationError(ref, currVariable + " cannot be used to declare itself");
+        }
         this.localAssigns.push(ref.id.spelling);
         return null;
     }
@@ -384,8 +410,7 @@ public class Identification implements Visitor<Object,Object> {
             id = this.localAssigns.pop();
 
             if (!IDTable.containsKey(id) && containsHelper(this.memberDeclMap, id) == null && !localDeclMap.containsKey(id)) {
-                _errors.reportError("Invalid Identifier Found");
-                return null;
+                throw new IdentificationError(ref, "Invalid Identifier Found");
             }
 
             if (IDTable.containsKey(id)) {
@@ -394,11 +419,23 @@ public class Identification implements Visitor<Object,Object> {
             } else {
                 try {
                     if (localDeclMap.containsKey(id)) {
-                        this.helperMap = IDTable.get(((VarDecl) localDeclMap.get(id)).className);
-                        this.privates = new Stack<>();
+                        if (((VarDecl) localDeclMap.get(id)).type.typeKind == TypeKind.CLASS) {
+                            this.helperMap = IDTable.get(((VarDecl) localDeclMap.get(id)).className);
+                            this.privates = new Stack<>();
+                        } else {
+                            throw new IdentificationError(
+                                    ref, ((VarDecl) localDeclMap.get(id)).type.typeKind.toString()
+                                            + " cannot be qualified");
+                        }
+
                     } else if (containsHelper(this.memberDeclMap, id) != null) {
-                        this.helperMap = IDTable.get(((FieldDecl) containsHelper(this.memberDeclMap, id)).className);
-                        this.privates = new Stack<>();
+                        if (((FieldDecl) containsHelper(this.memberDeclMap, id)).type.typeKind == TypeKind.CLASS) {
+                            this.helperMap = IDTable
+                                    .get(((FieldDecl) containsHelper(this.memberDeclMap, id)).className);
+                            this.privates = new Stack<>();
+                        } else {
+                            throw new IdentificationError(ref, ((FieldDecl) containsHelper(this.memberDeclMap, id)).type.typeKind.toString() + " cannot be qualified");
+                        }
                     }
                 } catch (Exception e) {
                     this.helperMap = new HashMap<>();
@@ -408,9 +445,9 @@ public class Identification implements Visitor<Object,Object> {
         } 
         
         if (containsHelper(helperMap, ref.id.spelling) == null) {
-            _errors.reportError("Invalid Identifier Found");
+            throw new IdentificationError(ref, "Invalid Identifier Found");
         } else if (temp == null && this.privates.contains(containsHelper(helperMap, ref.id.spelling)) && !currClass.equals(id)) {
-            _errors.reportError("Invalid Identifier Found");
+            throw new IdentificationError(ref, "Invalid Identifier Found");
         } else {
             for (Declaration key : this.helperMap.keySet()) {
                 if (key.name.equals(ref.id.spelling)) {
@@ -428,6 +465,9 @@ public class Identification implements Visitor<Object,Object> {
 
     @Override
     public Object visitIdentifier(Identifier id, Object arg) {
+        if (id.spelling.equals(currVariable)) {
+            throw new IdentificationError(id, currVariable + " cannot be initialized with itself");
+        }
         return id.spelling;
     }
 
