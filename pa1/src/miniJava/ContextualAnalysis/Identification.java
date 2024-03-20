@@ -2,6 +2,8 @@ package miniJava.ContextualAnalysis;
 
 import miniJava.ErrorReporter;
 import miniJava.AbstractSyntaxTrees.Package;
+import miniJava.SyntacticAnalyzer.Token;
+import miniJava.SyntacticAnalyzer.TokenType;
 import miniJava.AbstractSyntaxTrees.*;
 import java.util.HashMap;
 import java.util.Map;
@@ -52,6 +54,25 @@ public class Identification implements Visitor<Object,Object> {
     @Override
     public Object visitPackage(Package prog, Object arg) throws IdentificationError {
         String pfx = arg + "  . ";
+
+        this.memberDeclMap = new HashMap<>();
+        this.IDTable.put("System", this.memberDeclMap);
+        this.memberDeclMap.put(new FieldDecl(false, true, new ClassType(new Identifier(new Token(TokenType.Identifier, "_PrintStream", null)), null), "out", null, "_PrintStream"), null);
+        this.privateValues.put("System", new Stack<>());
+
+        this.memberDeclMap = new HashMap<>();
+        this.localDeclMap = new HashMap<>();
+        this.IDTable.put("_PrintStream", this.memberDeclMap);
+        this.localDeclMap.put("n", new VarDecl(new BaseType(TypeKind.INT, null), "n", null));
+        ParameterDeclList temp = new ParameterDeclList();
+        temp.add(new ParameterDecl(new BaseType(TypeKind.INT, null), "n", null));
+        this.memberDeclMap.put(new MethodDecl(new FieldDecl(false, false, new BaseType(TypeKind.VOID, null), "println", null), temp, new StatementList(), null), localDeclMap);
+        this.privateValues.put("_PrintStream", new Stack<>());
+
+        this.memberDeclMap = new HashMap<>();
+        this.localDeclMap = new HashMap<>();
+        this.IDTable.put("String", this.memberDeclMap);
+        this.privateValues.put("String", new Stack<>());
 
         for (ClassDecl c : prog.classDeclList) {
             this.memberDeclMap = new HashMap<>();
@@ -347,12 +368,23 @@ public class Identification implements Visitor<Object,Object> {
         if (this.helperMap == null) {
             String id = this.localAssigns.pop();
 
-            if (!IDTable.containsKey(id)) {
+            if (!IDTable.containsKey(id) && !localDeclMap.containsKey(id)) {
                 _errors.reportError("Invalid Identifier Found");
                 return null;
             }
-            this.helperMap = IDTable.get(id);
-            this.privates = privateValues.get(id);
+
+            if (IDTable.containsKey(id)) {
+                this.helperMap = IDTable.get(id);
+                this.privates = privateValues.get(id);
+            } else {
+                try {
+                    this.helperMap = IDTable.get(((VarDecl) localDeclMap.get(id)).className);
+                    this.privates = new Stack<>();
+                } catch (Exception e) {
+                    this.helperMap = new HashMap<>();
+                    this.privates = new Stack<>();
+                }
+            }
         } 
         
         if (containsHelper(helperMap, ref.id.spelling) == null) {
@@ -362,7 +394,11 @@ public class Identification implements Visitor<Object,Object> {
         } else {
             for (Declaration key : this.helperMap.keySet()) {
                 if (key.name.equals(ref.id.spelling)) {
-                    this.helperMap = IDTable.get(((FieldDecl) key).className);
+                    try {
+                        this.helperMap = IDTable.get(((FieldDecl) key).className);
+                    } catch (Exception e) {
+                        this.helperMap = new HashMap<>();
+                    }
                 }
             }
         }

@@ -221,7 +221,7 @@ public class Parser {
 
 					statement = new VarDeclStmt(
 							new VarDecl(new ArrayType(new ClassType(new Identifier(curr),
-									pos), pos), idToken.getTokenText(), pos),
+									pos), pos), idToken.getTokenText(), pos, curr.getTokenText()),
 							valDecal, pos);
 				}
 			}
@@ -242,7 +242,7 @@ public class Parser {
 				accept(TokenType.Assignment);
 				Expression valDecal = parseOrOperator();
 
-				statement = new VarDeclStmt(new VarDecl(new ClassType(new Identifier(curr), pos), idToken.getTokenText(), pos),valDecal, pos);
+				statement = new VarDeclStmt(new VarDecl(new ClassType(new Identifier(curr), pos), idToken.getTokenText(), pos, curr.getTokenText()),valDecal, pos);
 			}
 
 			accept(TokenType.Semicolon);
@@ -259,7 +259,7 @@ public class Parser {
 			accept(TokenType.Semicolon);
 
 			return new VarDeclStmt(
-					new VarDecl(type, idToken.getTokenText(), pos), valDecal, pos);
+					new VarDecl(type, idToken.getTokenText(), pos, curr.getTokenText()), valDecal, pos);
 		}
 	}
 
