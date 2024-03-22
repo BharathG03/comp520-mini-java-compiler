@@ -6,7 +6,6 @@ import miniJava.SyntacticAnalyzer.Token;
 import miniJava.SyntacticAnalyzer.TokenType;
 import miniJava.AbstractSyntaxTrees.*;
 
-import java.lang.reflect.Field;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Stack;
@@ -224,7 +223,9 @@ public class Identification implements Visitor<Object,Object> {
         Object temp = null;
 
         for (Statement s : sl) {
-            temp = s.visit(this, pfx);
+            if (s.visit(this, pfx) != null) {
+                temp = true;
+            }
         }
         return temp;
     }
@@ -241,7 +242,7 @@ public class Identification implements Visitor<Object,Object> {
         this.currVariable = name;
         stmt.initExp.visit(this, indent((String) arg));
         this.currVariable = null;
-        return 1;
+        return true;
     }
 
     @Override

@@ -4,6 +4,7 @@ import miniJava.ErrorReporter;
 import miniJava.AbstractSyntaxTrees.*;
 import miniJava.AbstractSyntaxTrees.Package;
 import miniJava.ContextualAnalysis.Identification;
+import miniJava.ContextualAnalysis.TypeChecking;
 
 
 public class Parser {
@@ -28,6 +29,9 @@ public class Parser {
 
 			Identification identification = new Identification(_errors);
 			identification.parse(prog);
+
+			//TypeChecking typeChecking = new TypeChecking(_errors);
+			//typeChecking.parse(prog);
 
 			return prog;
 		} catch( SyntaxError e ) {}
