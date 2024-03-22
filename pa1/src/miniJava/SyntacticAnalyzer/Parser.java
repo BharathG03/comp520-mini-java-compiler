@@ -94,7 +94,7 @@ public class Parser {
 				accept(TokenType.LParen);
 
 				if (!acceptOptional(TokenType.RParen)) {
-					paramaters = parseParameters();
+					paramaters = parseParameters(Class.name);
 					accept(TokenType.RParen);
 				}
 
@@ -475,7 +475,7 @@ public class Parser {
 		return new ClassType(new Identifier(typeToken), typeToken.getTokenPosition());
 	}
 
-	private ParameterDeclList parseParameters() throws SyntaxError {
+	private ParameterDeclList parseParameters(String cn) throws SyntaxError {
 		ParameterDeclList paramList = new ParameterDeclList();
 
 		boolean comma = true;
@@ -486,7 +486,7 @@ public class Parser {
 				throw new SyntaxError();
 			}
 
-			ParameterDecl param = new ParameterDecl(parseType(), _currentToken.getTokenText(), _currentToken.getTokenPosition());
+			ParameterDecl param = new ParameterDecl(parseType(), _currentToken.getTokenText(), _currentToken.getTokenPosition(), cn);
 	
 			accept(TokenType.Identifier);
 			comma = acceptOptional(TokenType.Comma);
