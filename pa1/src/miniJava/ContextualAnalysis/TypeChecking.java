@@ -348,8 +348,6 @@ public class TypeChecking implements Visitor<Object, TypeDenoter> {
                     return new BaseType(TypeKind.BOOLEAN, null);
                 } else if (leftTypeDenoter.typeKind == TypeKind.CLASS) {
                     if (((ClassType) leftTypeDenoter).className.equals(((ClassType) righTypeDenoter).className)) {
-                        System.out.println(((ClassType) leftTypeDenoter).className);
-                        System.out.println(((ClassType) righTypeDenoter).className);
                         return new BaseType(TypeKind.BOOLEAN, null);
                     } else {
                         return new BaseType(TypeKind.UNSUPPORTED, null);

@@ -251,7 +251,6 @@ public class Identification implements Visitor<Object,Object> {
         this.helperMap = null;
 
         stmt.val.visit(this, arg + "  ");
-        System.out.println(stmt.val.toString());
         return null;
     }
 
