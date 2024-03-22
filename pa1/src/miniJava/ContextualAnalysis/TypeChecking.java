@@ -302,12 +302,6 @@ public class TypeChecking implements Visitor<Object, TypeDenoter> {
         TypeDenoter leftTypeDenoter = expr.left.visit(this, arg);
         TypeDenoter righTypeDenoter = expr.right.visit(this, arg);
 
-        if (leftTypeDenoter.typeKind == TypeKind.ARRAY) {
-            leftTypeDenoter = ((ArrayType) leftTypeDenoter).eltType;
-        }
-        if (righTypeDenoter.typeKind == TypeKind.ARRAY) {
-            righTypeDenoter = ((ArrayType) righTypeDenoter).eltType;
-        }
 
         if (expr.operator.kind == TokenType.LogicalBiOperator) {
             if (leftTypeDenoter.typeKind == TypeKind.BOOLEAN && righTypeDenoter.typeKind == TypeKind.BOOLEAN) {
@@ -318,10 +312,12 @@ public class TypeChecking implements Visitor<Object, TypeDenoter> {
             }
         } else if (expr.operator.kind == TokenType.Equality || expr.operator.kind == TokenType.NotEquality) {
             if (leftTypeDenoter.typeKind == righTypeDenoter.typeKind) {
-                if (leftTypeDenoter.typeKind != TypeKind.CLASS || leftTypeDenoter.typeKind != TypeKind.ARRAY) {
+                if (leftTypeDenoter.typeKind != TypeKind.CLASS && leftTypeDenoter.typeKind != TypeKind.ARRAY) {
                     return new BaseType(TypeKind.BOOLEAN, null);
                 } else if (leftTypeDenoter.typeKind == TypeKind.CLASS) {
                     if (((ClassType) leftTypeDenoter).className.equals(((ClassType) righTypeDenoter).className)) {
+                        System.out.println(((ClassType) leftTypeDenoter).className);
+                        System.out.println(((ClassType) righTypeDenoter).className);
                         return new BaseType(TypeKind.BOOLEAN, null);
                     } else {
                         return new BaseType(TypeKind.UNSUPPORTED, null);

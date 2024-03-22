@@ -458,6 +458,9 @@ public class Identification implements Visitor<Object,Object> {
             for (Declaration key : this.helperMap.keySet()) {
                 if (key.name.equals(ref.id.spelling)) {
                     try {
+                        if (privates.contains(key)) {
+                            throw new IdentificationError(ref, "Private value referenced");
+                        }
                         this.helperMap = IDTable.get(((FieldDecl) key).className);
                         return key.toString();
                     } catch (Exception e) {
