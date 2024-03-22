@@ -316,6 +316,37 @@ public class TypeChecking implements Visitor<Object, TypeDenoter> {
                 reportTypeError(expr, "Left and Right Expressions have to both be boolean");
                 return new BaseType(TypeKind.UNSUPPORTED, null);
             }
+        } else if (expr.operator.kind == TokenType.Equality || expr.operator.kind == TokenType.NotEquality) {
+            if (leftTypeDenoter.typeKind == righTypeDenoter.typeKind) {
+                if (leftTypeDenoter.typeKind != TypeKind.CLASS || leftTypeDenoter.typeKind != TypeKind.ARRAY) {
+                    return new BaseType(TypeKind.BOOLEAN, null);
+                } else if (leftTypeDenoter.typeKind == TypeKind.CLASS) {
+                    if (((ClassType) leftTypeDenoter).className.equals(((ClassType) righTypeDenoter).className)) {
+                        return new BaseType(TypeKind.BOOLEAN, null);
+                    } else {
+                        return new BaseType(TypeKind.UNSUPPORTED, null);
+                    }
+                } else {
+                    if (((ArrayType) leftTypeDenoter).eltType.typeKind != TypeKind.CLASS) {
+                        if (((ArrayType) leftTypeDenoter).eltType.typeKind == ((ArrayType) righTypeDenoter).eltType.typeKind) {
+                            return new BaseType(TypeKind.BOOLEAN, null);
+                        }
+
+                        return new BaseType(TypeKind.UNSUPPORTED, null);
+                    } else if (((ArrayType) leftTypeDenoter).eltType.typeKind == TypeKind.CLASS) {
+                        if (((ClassType) ((ArrayType) leftTypeDenoter).eltType).className.equals(((ClassType) ((ArrayType) righTypeDenoter).eltType).className)) {
+                            return new BaseType(TypeKind.BOOLEAN, null);
+                        }
+
+                        return new BaseType(TypeKind.UNSUPPORTED, null);
+                    } else {
+                        return new BaseType(TypeKind.UNSUPPORTED, null);
+                    }
+                }
+            } else {
+                reportTypeError(expr, "Left and Right Expressions have to both be the same when checking equality");
+                return new BaseType(TypeKind.UNSUPPORTED, null);
+            }
         } else if (expr.operator.kind == TokenType.Comparator) {
             if (leftTypeDenoter.typeKind == TypeKind.INT && righTypeDenoter.typeKind == TypeKind.INT) {
                 return new BaseType(TypeKind.BOOLEAN, null);
