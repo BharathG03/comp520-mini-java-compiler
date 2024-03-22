@@ -30,8 +30,8 @@ public class Parser {
 			Identification identification = new Identification(_errors);
 			identification.parse(prog);
 
-			//TypeChecking typeChecking = new TypeChecking(_errors);
-			//typeChecking.parse(prog);
+			TypeChecking typeChecking = new TypeChecking(_errors);
+			typeChecking.parse(prog);
 
 			return prog;
 		} catch( SyntaxError e ) {}

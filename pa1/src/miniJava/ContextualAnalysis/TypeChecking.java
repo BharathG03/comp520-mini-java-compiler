@@ -4,8 +4,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Stack;
 
-import javax.sound.sampled.AudioFileFormat.Type;
-
 import miniJava.ErrorReporter;
 import miniJava.AbstractSyntaxTrees.*;
 import miniJava.AbstractSyntaxTrees.Package;
@@ -97,9 +95,9 @@ public class TypeChecking implements Visitor<Object, TypeDenoter> {
         for (Statement s : sl) {
             temp = s.visit(this, arg);
 
-            if (md.type.typeKind == TypeKind.VOID && temp != null) {
+            if (temp != null && (md.type.typeKind == TypeKind.VOID || temp.typeKind != TypeKind.NULL)) {
                 reportTypeError(md, "Wrong return type for method " + md.name);
-            } else if (temp != null && temp.typeKind != md.type.typeKind) {
+            } else if (temp != null && (temp.typeKind != md.type.typeKind || temp.typeKind != TypeKind.NULL)) {
                 reportTypeError(md, "Wrong return type for method " + md.name);
             }
         }
@@ -116,6 +114,7 @@ public class TypeChecking implements Visitor<Object, TypeDenoter> {
 
     @Override
     public TypeDenoter visitVarDecl(VarDecl decl, Object arg) {
+        localDeclMap.push(decl);
         return decl.type;
     }
 
@@ -172,15 +171,29 @@ public class TypeChecking implements Visitor<Object, TypeDenoter> {
     @Override
     public TypeDenoter visitAssignStmt(AssignStmt stmt, Object arg) {
         TypeDenoter left = stmt.ref.visit(this, arg);
+        this.helper = null;
+
         TypeDenoter right = stmt.val.visit(this, arg);
 
-        if (left != right) {
+        if (right.typeKind == TypeKind.NULL) {
+            return null;
+        }
+
+        if (left.typeKind != right.typeKind) {
             reportTypeError(stmt, "Assignment statement has an invalid assignment type");
             return null;
         }
 
-        if (left.typeKind == TypeKind.CLASS && (((ClassType) left).className.spelling).equals(((ClassType) right).className.spelling)) {
+        if (left.typeKind == TypeKind.CLASS && ((((ClassType) left).className.spelling).equals(((ClassType) right).className.spelling))) {
             reportTypeError(stmt, "Assignment statement has an invalid assignment");
+        }
+
+        if (left.typeKind == TypeKind.ARRAY) {
+            if (((ArrayType) left).eltType.typeKind != ((ArrayType) right).eltType.typeKind) {
+                reportTypeError(stmt, "Assignment statement has an invalid assignment");
+            } else if (((ArrayType) left).eltType.typeKind == TypeKind.CLASS && ((((ClassType) ((ArrayType) left).eltType).className.spelling).equals(((ClassType) ((ArrayType) right).eltType).className.spelling))) {
+                reportTypeError(stmt, "Assignment statement has an invalid assignment");
+            }
         }
         
         return null;
@@ -189,6 +202,8 @@ public class TypeChecking implements Visitor<Object, TypeDenoter> {
     @Override
     public TypeDenoter visitIxAssignStmt(IxAssignStmt stmt, Object arg) {
         TypeDenoter ref = stmt.ref.visit(this, arg);
+        this.helper = null;
+
         TypeDenoter exp1 = stmt.ix.visit(this, arg);
         TypeDenoter exp2 = stmt.exp.visit(this, arg);
 
@@ -210,18 +225,11 @@ public class TypeChecking implements Visitor<Object, TypeDenoter> {
 
     @Override
     public TypeDenoter visitCallStmt(CallStmt stmt, Object arg) {
-        // TypeDenoter ref = stmt.methodRef.visit(this, arg);
-        // MethodDecl temp = null;
-        // ExprList l1 = stmt.argList;
+        // TODO
+        TypeDenoter temp = stmt.methodRef.visit(this, arg);
+        this.helper = null;
 
-        // if (ref.typeKind == TypeKind.CLASS) {
-
-        // }
-
-        // return null;
-
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'visitIfStmt'");
+        return temp;
     }
 
     @Override
@@ -255,10 +263,17 @@ public class TypeChecking implements Visitor<Object, TypeDenoter> {
     public TypeDenoter visitUnaryExpr(UnaryExpr expr, Object arg) {
         TypeDenoter exTypeDenoter = expr.expr.visit(this, arg);
 
-        if (exTypeDenoter.typeKind != TypeKind.INT) {
-            reportTypeError(exTypeDenoter, "Unary Expression needs a integer expression");
+        if (expr.operator.kind == TokenType.Minus) {
+            if (exTypeDenoter.typeKind != TypeKind.INT) {
+                reportTypeError(exTypeDenoter, "Unary Expression needs a integer expression");
+            }
+            return new BaseType(TypeKind.INT, null);
+        } else {
+            if (exTypeDenoter.typeKind != TypeKind.BOOLEAN) {
+                reportTypeError(exTypeDenoter, "Unary Expression needs a integer expression");
+            }
+            return new BaseType(TypeKind.BOOLEAN, null);
         }
-        return new BaseType(TypeKind.BOOLEAN, null);
     }
 
     @Override
@@ -272,6 +287,20 @@ public class TypeChecking implements Visitor<Object, TypeDenoter> {
             } else {
                 reportTypeError(expr, "Left and Right Expressions have to both be boolean");
             }
+        } else if (expr.operator.kind == TokenType.Comparator) {
+            if (leftTypeDenoter.typeKind == TypeKind.INT && righTypeDenoter.typeKind == TypeKind.INT) {
+                return new BaseType(TypeKind.BOOLEAN, null);
+            } else {
+                reportTypeError(expr, "Left and Right Expressions have to both be INT");
+            }
+        } else if (expr.operator.kind == TokenType.Operator || expr.operator.kind == TokenType.Minus) {
+            if (leftTypeDenoter.typeKind == TypeKind.INT && righTypeDenoter.typeKind == TypeKind.INT) {
+                return new BaseType(TypeKind.INT, null);
+            } else {
+                reportTypeError(expr, "Left and Right Expressions have to both be INT");
+            }
+        } else {
+            return new BaseType(TypeKind.BOOLEAN, null);
         }
 
         return null;
@@ -279,25 +308,37 @@ public class TypeChecking implements Visitor<Object, TypeDenoter> {
 
     @Override
     public TypeDenoter visitRefExpr(RefExpr expr, Object arg) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'visitRefExpr'");
+        TypeDenoter temp = expr.ref.visit(this, arg);
+        this.helper = null;
+
+        return temp;
     }
 
     @Override
     public TypeDenoter visitIxExpr(IxExpr expr, Object arg) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'visitIxExpr'");
+       TypeDenoter exp = expr.ref.visit(this, arg);
+       this.helper = null;
+
+       TypeDenoter num = expr.ixExpr.visit(this, arg);
+
+        if (exp.typeKind != TypeKind.ARRAY) {
+            reportTypeError(num, "IX Expression reference must be an Array");
+        }
+    
+       if (num.typeKind != TypeKind.INT) {
+        reportTypeError(num, "IX Expressions must have a INT value for size");
+       }
+
+       return new ArrayType(exp, null);
     }
 
     @Override
     public TypeDenoter visitCallExpr(CallExpr expr, Object arg) {
-        // if (this.helper == null) {
-        //     this.helper = IDTable.get(this.currClass);
-        // }
-
-        // Declaration temp = expr.
-
-        return null;
+        // TODO
+        TypeDenoter temp = expr.functionRef.visit(this, arg);
+        this.helper = null;
+        
+        return temp;
     }
 
     @Override
@@ -327,25 +368,109 @@ public class TypeChecking implements Visitor<Object, TypeDenoter> {
 
     @Override
     public TypeDenoter visitThisRef(ThisRef ref, Object arg) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'visitThisRef'");
+        this.helper = IDTable.get(currClass);
+
+        return new ClassType(new Identifier(new Token(TokenType.This, "this", null), new Token(TokenType.Class, currClass, null)), null);
     }
 
     @Override
     public TypeDenoter visitIdRef(IdRef ref, Object arg) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'visitIdRef'");
+        String id = ref.id.spelling;
+
+        if (this.helper == null) {
+            if (IDTable.containsKey(id)) {
+                return new ClassType(ref.id, null);
+            } else {
+                for (Declaration d : localDeclMap) {
+                    if (d.name.equals(id)) {
+                        this.helper = IDTable.get(currClass);
+
+                        if (d.type.typeKind == TypeKind.INT || d.type.typeKind == TypeKind.BOOLEAN) {
+                            return new BaseType(d.type.typeKind, null);
+                        } else if (d.type.typeKind == TypeKind.CLASS) {
+                            return new ClassType(((ClassType) d.type).className, null);
+                        } else if (d.type.typeKind == TypeKind.CLASS) {
+                            if (((ArrayType) (d.type)).eltType.typeKind == TypeKind.CLASS) {
+                                return new ArrayType(
+                                        new ClassType(((ClassType) ((ArrayType) d.type).eltType).className, null),
+                                        null);
+                            }
+                            return new ArrayType(new BaseType(((ArrayType) (d.type)).eltType.typeKind, null), null);
+                        } else {
+                            return new BaseType(TypeKind.UNSUPPORTED, null);
+                        }
+                    }
+                }
+
+                for (Declaration d : IDTable.get(currClass)) {
+                    if (d.name.equals(id)) {
+                        if (d.toString().equals("FieldDecl")) {
+                            this.helper = IDTable.get(((FieldDecl) d).className);
+                        } else {
+                            this.helper = new Stack<>();
+                        }
+
+                        if (d.type.typeKind == TypeKind.INT || d.type.typeKind == TypeKind.BOOLEAN) {
+                            return new BaseType(d.type.typeKind, null);
+                        } else if (d.type.typeKind == TypeKind.CLASS) {
+                            return new ClassType(((ClassType) d.type).className, null);
+                        } else if (d.type.typeKind == TypeKind.CLASS) {
+                            if (((ArrayType) (d.type)).eltType.typeKind == TypeKind.CLASS) {
+                                return new ArrayType(
+                                        new ClassType(((ClassType) ((ArrayType) d.type).eltType).className, null),
+                                        null);
+                            }
+                            return new ArrayType(new BaseType(((ArrayType) (d.type)).eltType.typeKind, null), null);
+                        } else {
+                            return new BaseType(TypeKind.UNSUPPORTED, null);
+                        }
+                    }
+                }
+            }
+        }
+
+        for (Declaration d : this.helper) {
+            if (d.name.equals(id)) {
+                if (d.toString().equals("FieldDecl")) {
+                    this.helper = IDTable.get(((FieldDecl) d).className);
+                } else {
+                    this.helper = new Stack<>();
+                }
+
+                if (d.type.typeKind == TypeKind.INT || d.type.typeKind == TypeKind.BOOLEAN) {
+                    return new BaseType(d.type.typeKind, null);
+                } else if (d.type.typeKind == TypeKind.CLASS) {
+                    return new ClassType(((ClassType) d.type).className, null);
+                } else if (d.type.typeKind == TypeKind.CLASS) {
+                    if (((ArrayType) (d.type)).eltType.typeKind == TypeKind.CLASS) {
+                        return new ArrayType(
+                                new ClassType(((ClassType) ((ArrayType) d.type).eltType).className, null),
+                                null);
+                    }
+                    return new ArrayType(new BaseType(((ArrayType) (d.type)).eltType.typeKind, null), null);
+                } else {
+                    return new BaseType(TypeKind.UNSUPPORTED, null);
+                }
+            }
+        }
+   
+        return null;
     }
 
     @Override
     public TypeDenoter visitQRef(QualRef ref, Object arg) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'visitQRef'");
+        TypeDenoter refDenoter = ref.ref.visit(this, arg);
+        TypeDenoter idDenoter = ref.id.visit(this, arg);
+
+        if (refDenoter.typeKind != TypeKind.CLASS) {
+            reportTypeError(refDenoter, "Reference must be a class type");
+        }
+
+        return idDenoter;
     }
 
     @Override
     public TypeDenoter visitIdentifier(Identifier id, Object arg) {
-        //return new ClassType(new Identifier(id.type), null);
         for (Declaration d : localDeclMap) {
             if (d.name.equals(id.spelling)) {
                 return d.type;
