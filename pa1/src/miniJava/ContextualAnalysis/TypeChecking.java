@@ -19,6 +19,7 @@ public class TypeChecking implements Visitor<Object, TypeDenoter> {
     private String currClass = "";
     private boolean qRefFlag = false;
     private Stack<Declaration> helper = null;
+    private Declaration methodCalls = null;
 
     public TypeChecking(ErrorReporter errors) {
         this._errors = errors;
@@ -249,6 +250,37 @@ public class TypeChecking implements Visitor<Object, TypeDenoter> {
         TypeDenoter temp = stmt.methodRef.visit(this, arg);
         this.helper = null;
 
+        MethodDecl method = (MethodDecl) this.methodCalls;
+        ParameterDeclList parameters = method.parameterDeclList;
+
+        if (parameters.size() != stmt.argList.size()) {
+            reportTypeError(method, "Call Expression does not contain Right number of Parameters");
+        } else {
+            for (int i = 0; i < parameters.size(); i++) {
+                TypeDenoter left = parameters.get(i).visit(this, arg);
+                TypeDenoter right = stmt.argList.get(i).visit(this, arg);
+
+                if (left.typeKind != right.typeKind) {
+                    reportTypeError(right, "Call Expression does not have matching method");
+                }
+
+                if (left.typeKind == TypeKind.CLASS
+                        && !((ClassType) left).className.spelling.equals(((ClassType) right).className.spelling)) {
+                    reportTypeError(right, "Call Expression does not have matching method");
+                }
+
+                if (left.typeKind == TypeKind.ARRAY) {
+                    if (((ArrayType) left).eltType.typeKind != ((ArrayType) right).eltType.typeKind) {
+                        reportTypeError(right, "Call Expression does not have matching method");
+                    } else if (((ArrayType) left).eltType.typeKind == TypeKind.CLASS
+                            && !((((ClassType) ((ArrayType) left).eltType).className.spelling)
+                                    .equals(((ClassType) ((ArrayType) right).eltType).className.spelling))) {
+                        reportTypeError(right, "Call Expression does not have matching method");
+                    }
+                }
+            }
+        }
+
         return temp;
     }
 
@@ -396,8 +428,39 @@ public class TypeChecking implements Visitor<Object, TypeDenoter> {
     public TypeDenoter visitCallExpr(CallExpr expr, Object arg) {
         // TODO
         this.qRefFlag = false;
-        TypeDenoter temp = expr.functionRef.visit(this, arg);
+        TypeDenoter temp = expr.functionRef.visit(this, arg);                
         this.helper = null;
+
+        MethodDecl method = (MethodDecl) this.methodCalls;
+        ParameterDeclList parameters = method.parameterDeclList;
+
+        if (parameters.size() != expr.argList.size()) {
+            reportTypeError(method, "Call Expression does not contain Right number of Parameters");
+        } else {
+            for (int i = 0; i < parameters.size(); i++) {
+                TypeDenoter left = parameters.get(i).visit(this, arg);
+                TypeDenoter right = expr.argList.get(i).visit(this, arg);
+
+                if (left.typeKind != right.typeKind) {
+                    reportTypeError(right, "Call Expression does not have matching method");
+                }
+
+                if (left.typeKind == TypeKind.CLASS
+                        && !((ClassType) left).className.spelling.equals(((ClassType) right).className.spelling)) {
+                    reportTypeError(right, "Call Expression does not have matching method");
+                }
+
+                if (left.typeKind == TypeKind.ARRAY) {
+                    if (((ArrayType) left).eltType.typeKind != ((ArrayType) right).eltType.typeKind) {
+                        reportTypeError(right, "Call Expression does not have matching method");
+                    } else if (((ArrayType) left).eltType.typeKind == TypeKind.CLASS
+                            && !((((ClassType) ((ArrayType) left).eltType).className.spelling)
+                                    .equals(((ClassType) ((ArrayType) right).eltType).className.spelling))) {
+                        reportTypeError(right, "Call Expression does not have matching method");
+                    }
+                }
+            }
+        }        
         
         return temp;
     }
@@ -474,6 +537,7 @@ public class TypeChecking implements Visitor<Object, TypeDenoter> {
                         if (d.toString().equals("FieldDecl")) {
                             this.helper = IDTable.get(((FieldDecl) d).className);
                         } else {
+                            this.methodCalls = d;
                             this.helper = new Stack<>();
                         }
 
@@ -506,6 +570,7 @@ public class TypeChecking implements Visitor<Object, TypeDenoter> {
                 if (d.toString().equals("FieldDecl")) {
                     this.helper = IDTable.get(((FieldDecl) d).className);
                 } else {
+                    this.methodCalls = d;
                     this.helper = new Stack<>();
                 }
 
@@ -566,6 +631,7 @@ public class TypeChecking implements Visitor<Object, TypeDenoter> {
                         if (d.toString().equals("FieldDecl")) {
                             this.helper = this.IDTable.get(((FieldDecl) d).className);
                         } else {
+                            this.methodCalls = d;
                             this.helper = new Stack<>();
                         }
                         return d.type;
@@ -578,6 +644,7 @@ public class TypeChecking implements Visitor<Object, TypeDenoter> {
                     if (d.toString().equals("FieldDecl")) {
                         this.helper = IDTable.get(((FieldDecl) d).className);
                     } else {
+                        this.methodCalls = d;
                         this.helper = new Stack<>();
                     }
 

@@ -251,6 +251,7 @@ public class Identification implements Visitor<Object,Object> {
         this.helperMap = null;
 
         stmt.val.visit(this, arg + "  ");
+        System.out.println(stmt.val.toString());
         return null;
     }
 
@@ -292,7 +293,7 @@ public class Identification implements Visitor<Object,Object> {
     @Override
     public Object visitIfStmt(IfStmt stmt, Object arg) {
         stmt.cond.visit(this, indent((String) arg));
-        if (stmt.thenStmt.visit(this, indent((String) arg)) != null) {
+        if (stmt.elseStmt == null && stmt.thenStmt.visit(this, indent((String) arg)) != null) {
             throw new IdentificationError(stmt, "Can't Initialize variable in If Statement");
         }
 
