@@ -157,7 +157,6 @@ public class TypeChecking implements Visitor<Object, TypeDenoter> {
 
         if (right.typeKind == TypeKind.NULL) {
             return null;
-            // return new BaseType(TypeKind.UNSUPPORTED, null);
         }
 
         if (left.typeKind != right.typeKind) {
@@ -193,7 +192,6 @@ public class TypeChecking implements Visitor<Object, TypeDenoter> {
 
         if (right.typeKind == TypeKind.NULL) {
             return null;
-            // return new BaseType(TypeKind.UNSUPPORTED, null);
         }
 
         if (left.typeKind != right.typeKind) {
@@ -285,6 +283,7 @@ public class TypeChecking implements Visitor<Object, TypeDenoter> {
     @Override
     public TypeDenoter visitUnaryExpr(UnaryExpr expr, Object arg) {
         TypeDenoter exTypeDenoter = expr.expr.visit(this, arg);
+        this.helper = null;
 
         if (expr.operator.kind == TokenType.Minus) {
             if (exTypeDenoter.typeKind != TypeKind.INT) {
@@ -316,24 +315,25 @@ public class TypeChecking implements Visitor<Object, TypeDenoter> {
                 return new BaseType(TypeKind.BOOLEAN, null);
             } else {
                 reportTypeError(expr, "Left and Right Expressions have to both be boolean");
+                return new BaseType(TypeKind.UNSUPPORTED, null);
             }
         } else if (expr.operator.kind == TokenType.Comparator) {
             if (leftTypeDenoter.typeKind == TypeKind.INT && righTypeDenoter.typeKind == TypeKind.INT) {
                 return new BaseType(TypeKind.BOOLEAN, null);
             } else {
                 reportTypeError(expr, "Left and Right Expressions have to both be INT");
+                return new BaseType(TypeKind.UNSUPPORTED, null);
             }
         } else if (expr.operator.kind == TokenType.Operator || expr.operator.kind == TokenType.Minus) {
             if (leftTypeDenoter.typeKind == TypeKind.INT && righTypeDenoter.typeKind == TypeKind.INT) {
                 return new BaseType(TypeKind.INT, null);
             } else {
                 reportTypeError(expr, "Left and Right Expressions have to both be INT");
+                return new BaseType(TypeKind.UNSUPPORTED, null);
             }
         } else {
             return new BaseType(TypeKind.BOOLEAN, null);
         }
-
-        return null;
     }
 
     @Override
@@ -355,10 +355,12 @@ public class TypeChecking implements Visitor<Object, TypeDenoter> {
 
         if (exp.typeKind != TypeKind.ARRAY) {
             reportTypeError(num, "IX Expression reference must be an Array");
+             return new BaseType(TypeKind.UNSUPPORTED, null);
         }
     
        if (num.typeKind != TypeKind.INT) {
         reportTypeError(num, "IX Expressions must have a INT value for size");
+        return new BaseType(TypeKind.UNSUPPORTED, null);
        }
 
        return ((ArrayType) exp).eltType;
@@ -391,9 +393,11 @@ public class TypeChecking implements Visitor<Object, TypeDenoter> {
         
         if (sizeExpr.typeKind != TypeKind.INT) {
             reportTypeError(sizeExpr, "Size Expression in new array Declaration has to be of type Int");
+            return new BaseType(TypeKind.UNSUPPORTED, null);
         }
         if (type.typeKind != TypeKind.INT && type.typeKind != TypeKind.CLASS) {
             reportTypeError(sizeExpr, "Array type must be INT or CLASS");
+            return new BaseType(TypeKind.UNSUPPORTED, null);
         }
 
         return new ArrayType(type, null);
@@ -463,6 +467,9 @@ public class TypeChecking implements Visitor<Object, TypeDenoter> {
                     }
                 }
             }
+
+            reportTypeError(ref, "Variable Not Found");
+            return new BaseType(TypeKind.UNSUPPORTED, null);
         }
         
         for (Declaration d : this.helper) {
@@ -489,8 +496,9 @@ public class TypeChecking implements Visitor<Object, TypeDenoter> {
                 }
             }
         }
-   
-        return null;
+
+        reportTypeError(ref, "Variable Not Found");
+        return new BaseType(TypeKind.UNSUPPORTED, null);
     }
 
     @Override
@@ -502,6 +510,7 @@ public class TypeChecking implements Visitor<Object, TypeDenoter> {
 
         if (refDenoter.typeKind != TypeKind.CLASS) {
             reportTypeError(refDenoter, "Reference must be a class type");
+            return new BaseType(TypeKind.UNSUPPORTED, null);
         }
 
         return idDenoter;
