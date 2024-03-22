@@ -94,7 +94,7 @@ public class TypeChecking implements Visitor<Object, TypeDenoter> {
         for (Statement s : sl) {
             temp = s.visit(this, arg);
 
-            if (temp != null && (md.type.typeKind == TypeKind.VOID && temp.typeKind != TypeKind.NULL)) {
+            if (temp != null && (md.type.typeKind == TypeKind.VOID && (temp.typeKind != TypeKind.NULL && temp.typeKind != TypeKind.VOID))) {
                 reportTypeError(md, "Wrong return type for method " + md.name);
             } else if (temp != null && (temp.typeKind != md.type.typeKind && temp.typeKind != TypeKind.NULL)) {
                 reportTypeError(md, "Wrong return type for method " + md.name);
@@ -188,7 +188,6 @@ public class TypeChecking implements Visitor<Object, TypeDenoter> {
         this.helper = null;
 
         TypeDenoter right = stmt.val.visit(this, arg);
-
 
         if (right.typeKind == TypeKind.NULL) {
             return null;
@@ -407,7 +406,7 @@ public class TypeChecking implements Visitor<Object, TypeDenoter> {
     public TypeDenoter visitThisRef(ThisRef ref, Object arg) {
         this.helper = IDTable.get(currClass);
 
-        return new ClassType(new Identifier(new Token(TokenType.This, "this", null), new Token(TokenType.Class, currClass, null)), null);
+        return new ClassType(new Identifier(new Token(TokenType.Identifier, currClass, null), new Token(TokenType.Class, currClass, null)), null);
     }
 
     @Override
@@ -416,6 +415,7 @@ public class TypeChecking implements Visitor<Object, TypeDenoter> {
 
         if (this.helper == null) {
             if (this.qRefFlag && IDTable.containsKey(id)) {
+                this.helper = IDTable.get(id);
                 return new ClassType(ref.id, null);
             } else {
                 for (Declaration d : localDeclMap) {
@@ -454,13 +454,15 @@ public class TypeChecking implements Visitor<Object, TypeDenoter> {
                             return new BaseType(d.type.typeKind, null);
                         } else if (d.type.typeKind == TypeKind.CLASS) {
                             return new ClassType(((ClassType) d.type).className, null);
-                        } else if (d.type.typeKind == TypeKind.CLASS) {
+                        } else if (d.type.typeKind == TypeKind.ARRAY) {
                             if (((ArrayType) (d.type)).eltType.typeKind == TypeKind.CLASS) {
                                 return new ArrayType(
                                         new ClassType(((ClassType) ((ArrayType) d.type).eltType).className, null),
                                         null);
                             }
                             return new ArrayType(new BaseType(((ArrayType) (d.type)).eltType.typeKind, null), null);
+                        } else if (d.type.typeKind == TypeKind.VOID) {
+                            return d.type;
                         } else {
                             return new BaseType(TypeKind.UNSUPPORTED, null);
                         }
@@ -491,6 +493,8 @@ public class TypeChecking implements Visitor<Object, TypeDenoter> {
                                 null);
                     }
                     return new ArrayType(new BaseType(((ArrayType) (d.type)).eltType.typeKind, null), null);
+                } else if (d.type.typeKind == TypeKind.VOID) {
+                    return d.type;
                 } else {
                     return new BaseType(TypeKind.UNSUPPORTED, null);
                 }
@@ -520,6 +524,7 @@ public class TypeChecking implements Visitor<Object, TypeDenoter> {
     public TypeDenoter visitIdentifier(Identifier id, Object arg) {
         if (this.helper == null) {
              if (this.qRefFlag && IDTable.containsKey(id.spelling)) {
+                 this.helper = IDTable.get(id.spelling);
                 return new ClassType(id, null);
             } else {
                 for (Declaration d : localDeclMap) {
@@ -560,6 +565,8 @@ public class TypeChecking implements Visitor<Object, TypeDenoter> {
                                     null);
                         }
                         return new ArrayType(new BaseType(((ArrayType) (d.type)).eltType.typeKind, null), null);
+                    } else if (d.type.typeKind == TypeKind.VOID) {
+                        return d.type;
                     } else {
                         return new BaseType(TypeKind.UNSUPPORTED, null);
                     }
@@ -567,7 +574,7 @@ public class TypeChecking implements Visitor<Object, TypeDenoter> {
             }
         }
 
-        return null;
+        return new BaseType(TypeKind.UNSUPPORTED, null);
     }
 
     @Override
