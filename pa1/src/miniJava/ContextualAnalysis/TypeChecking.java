@@ -494,7 +494,7 @@ public class TypeChecking implements Visitor<Object, TypeDenoter> {
     public TypeDenoter visitThisRef(ThisRef ref, Object arg) {
         this.helper = IDTable.get(currClass);
 
-        return new ClassType(new Identifier(new Token(TokenType.Identifier, currClass, null), new Token(TokenType.Class, currClass, null)), null);
+        return new ClassType(new Identifier(new Token(TokenType.Identifier, currClass, null)), null);
     }
 
     @Override

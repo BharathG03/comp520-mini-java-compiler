@@ -14,12 +14,7 @@ public class Identifier extends Terminal {
     super (t);
     this.type = null;
   }
-
-  public Identifier(Token t, Token type) {
-    super(t);
-    this.type = type;
-  }
-
+  
   public <A,R> R visit(Visitor<A,R> v, A o) {
       return v.visitIdentifier(this, o);
   }

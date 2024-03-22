@@ -1,0 +1,6 @@
+Modified ASTs:
+VarDecl AST: AST was modified to include new Class Name Field that store class the variable was declared in
+FieldDecl AST: AST was modified to include new Class Name Field that store class the variable was declared in
+NullLiteral AST: AST was made for NULL Literal follows same format as the INT and BOOLEAN Literals
+
+TypeKind: New TypeKind of NULL ws added to the TypeKind Enum
