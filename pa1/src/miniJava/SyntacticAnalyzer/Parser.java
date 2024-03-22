@@ -34,7 +34,7 @@ public class Parser {
 			typeChecking.parse(prog);
 
 			return prog;
-		} catch( Exception e ) {}
+		} catch( Error e ) {}
 		return null;
 	}
 	
