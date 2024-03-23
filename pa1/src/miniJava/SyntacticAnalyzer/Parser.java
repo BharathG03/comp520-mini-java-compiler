@@ -1,5 +1,7 @@
 package miniJava.SyntacticAnalyzer;
 
+import javax.swing.plaf.synth.SynthButtonUI;
+
 import miniJava.ErrorReporter;
 import miniJava.AbstractSyntaxTrees.*;
 import miniJava.AbstractSyntaxTrees.Package;
@@ -34,7 +36,7 @@ public class Parser {
 			typeChecking.parse(prog);
 
 			return prog;
-		} catch( Error e ) {}
+		} catch( SyntaxError e ) {}
 		return null;
 	}
 	
