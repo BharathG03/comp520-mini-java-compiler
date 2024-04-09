@@ -288,7 +288,11 @@ public class TypeChecking implements Visitor<Object, TypeDenoter> {
 
     @Override
     public TypeDenoter visitReturnStmt(ReturnStmt stmt, Object arg) {
-        return stmt.returnExpr.visit(this, arg);
+        if (stmt.returnExpr != null) {
+            return stmt.returnExpr.visit(this, arg);
+        }
+
+        return new BaseType(TypeKind.NULL, null);
     }
 
     @Override
@@ -336,7 +340,6 @@ public class TypeChecking implements Visitor<Object, TypeDenoter> {
         TypeDenoter leftTypeDenoter = expr.left.visit(this, arg);
         TypeDenoter righTypeDenoter = expr.right.visit(this, arg);
 
-
         if (expr.operator.kind == TokenType.LogicalBiOperator) {
             if (leftTypeDenoter.typeKind == TypeKind.BOOLEAN && righTypeDenoter.typeKind == TypeKind.BOOLEAN) {
                 return new BaseType(TypeKind.BOOLEAN, null);
@@ -345,7 +348,9 @@ public class TypeChecking implements Visitor<Object, TypeDenoter> {
                 return new BaseType(TypeKind.UNSUPPORTED, null);
             }
         } else if (expr.operator.kind == TokenType.Equality || expr.operator.kind == TokenType.NotEquality) {
-            if (leftTypeDenoter.typeKind == righTypeDenoter.typeKind) {
+            if(leftTypeDenoter.typeKind == TypeKind.NULL || righTypeDenoter.typeKind == TypeKind.NULL) {
+                return new BaseType(TypeKind.BOOLEAN, null);
+            } else if (leftTypeDenoter.typeKind == righTypeDenoter.typeKind) {
                 if (leftTypeDenoter.typeKind != TypeKind.CLASS && leftTypeDenoter.typeKind != TypeKind.ARRAY) {
                     return new BaseType(TypeKind.BOOLEAN, null);
                 } else if (leftTypeDenoter.typeKind == TypeKind.CLASS) {

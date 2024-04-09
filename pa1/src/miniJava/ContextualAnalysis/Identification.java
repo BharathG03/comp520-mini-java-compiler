@@ -284,7 +284,9 @@ public class Identification implements Visitor<Object,Object> {
 
     @Override
     public Object visitReturnStmt(ReturnStmt stmt, Object arg) {
-        stmt.returnExpr.visit(this, indent((String) arg));
+        if (stmt.returnExpr != null) {
+            stmt.returnExpr.visit(this, indent((String) arg));
+        }
 
         return null;
     }
@@ -402,8 +404,24 @@ public class Identification implements Visitor<Object,Object> {
         if (this.helperMap == null && ref.id.spelling.equals(currVariable)) {
             throw new IdentificationError(ref, currVariable + " cannot be used to declare itself");
         }
+
+        Declaration temp = containsHelper(memberDeclMap, ref.id.spelling);
+        String rVal = "VarDecl";
+
+        if (temp != null) {
+            try {
+                if (temp.toString().equals("MethodDecl")) {
+                    throw new Exception("Method Decl Found");
+                }
+            } catch (Exception e) {
+                if (e.getMessage().equals("Method Decl Found")) {
+                    rVal = "MethodDecl";
+                }
+            }
+        }
+
         this.localAssigns.push(ref.id.spelling);
-        return "VarDecl";
+        return rVal;
     }
 
     @Override
@@ -462,6 +480,7 @@ public class Identification implements Visitor<Object,Object> {
                             throw new IdentificationError(ref, "Private value referenced");
                         }
                         this.helperMap = IDTable.get(((FieldDecl) key).className);
+                        privates = this.privateValues.get(((FieldDecl) key).className);
                         return key.toString();
                     } catch (Exception e) {
                         this.helperMap = new HashMap<>();
