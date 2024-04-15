@@ -463,6 +463,11 @@ public class Identification implements Visitor<Object,Object> {
                 }
             }
 
+            if (!isLocal && this.isMethodStatic != this.isRefStatic) {
+                throw new IdentificationError(ref,
+                        "Invalid mismatch between static and non static fields");
+            }
+
             this.Statics = new Stack<>();
         }
 
@@ -550,12 +555,12 @@ public class Identification implements Visitor<Object,Object> {
                                     this.isRefStatic = true;
                                 }
                             }
+                        }
 
-                            if (!isLocal && this.isMethodStatic != this.isRefStatic) {
-                                System.out.println("TESTTEST");
-                                throw new IdentificationError(ref,
-                                        "Invalid mismatch between static and non static fields");
-                            }
+                        if (!isLocal && this.isMethodStatic != this.isRefStatic) {
+                            System.out.println("TESTTEST");
+                            throw new IdentificationError(ref,
+                                    "Invalid mismatch between static and non static fields");
                         }
                 
                         return key.toString();
