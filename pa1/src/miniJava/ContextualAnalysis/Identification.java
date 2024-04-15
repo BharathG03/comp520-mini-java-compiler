@@ -24,6 +24,10 @@ public class Identification implements Visitor<Object,Object> {
     private Stack<String> localAssigns;
     private Map<String, Stack<Declaration>> privateValues = new HashMap<>();
     private Stack<Declaration> privates;
+    private Map<String, Stack<Declaration>> staticValues = new HashMap<>();
+    private Stack<Declaration> Statics;
+    private boolean isMethodStatic = false;
+    private boolean isRefStatic = false;
 	
 	public Identification(ErrorReporter errors) {
 		this._errors = errors;
@@ -58,10 +62,15 @@ public class Identification implements Visitor<Object,Object> {
     public Object visitPackage(Package prog, Object arg) throws IdentificationError {
         String pfx = arg + "  . ";
 
+        Declaration _PrintStream = new FieldDecl(false, true,
+                new ClassType(new Identifier(new Token(TokenType.Identifier, "_PrintStream", null)), null), "out", null,
+                "_PrintStream");
         this.memberDeclMap = new HashMap<>();
         this.IDTable.put("System", this.memberDeclMap);
-        this.memberDeclMap.put(new FieldDecl(false, true, new ClassType(new Identifier(new Token(TokenType.Identifier, "_PrintStream", null)), null), "out", null, "_PrintStream"), null);
+        this.memberDeclMap.put(_PrintStream, null);
         this.privateValues.put("System", new Stack<>());
+        this.staticValues.put("System", new Stack<>());
+        this.staticValues.get("System").add(_PrintStream);
 
         this.memberDeclMap = new HashMap<>();
         this.localDeclMap = new HashMap<>();
@@ -80,6 +89,7 @@ public class Identification implements Visitor<Object,Object> {
         for (ClassDecl c : prog.classDeclList) {
             this.memberDeclMap = new HashMap<>();
             this.privateValues.put(c.name, new Stack<>());
+            this.staticValues.put(c.name, new Stack<>());
 
             if (IDTable.containsKey(c.name)) {
                 throw new IdentificationError(c, "Duplication Declaration of class " + c.name);
@@ -95,6 +105,10 @@ public class Identification implements Visitor<Object,Object> {
                     this.privateValues.get(c.name).add(f);
                 }
 
+                if (f.isStatic) {
+                    this.staticValues.get(c.name).add(f);
+                }
+
                 memberDeclMap.put(f, null);
             }
 
@@ -105,6 +119,10 @@ public class Identification implements Visitor<Object,Object> {
 
                 if (m.isPrivate) {
                     this.privateValues.get(c.name).add(m);
+                }
+
+                if (m.isStatic) {
+                    this.staticValues.get(c.name).add(m);
                 }
 
                 memberDeclMap.put(m, null);
@@ -158,6 +176,7 @@ public class Identification implements Visitor<Object,Object> {
     @Override
     public Object visitMethodDecl(MethodDecl md, Object arg) {
         StatementList sl = md.statementList;
+        this.isMethodStatic = md.isStatic;
 
         String pfx = ((String) arg) + "  . ";
 
@@ -338,6 +357,10 @@ public class Identification implements Visitor<Object,Object> {
         }
         this.helperMap = null;
 
+        if (this.isMethodStatic != this.isRefStatic) {
+            throw new IdentificationError(expr, "Invalid mismatch between static and non static fields");
+        }
+
         return null;
     }
 
@@ -396,6 +419,8 @@ public class Identification implements Visitor<Object,Object> {
         }
         this.helperMap = IDTable.get(this.currClass);
         this.privates = privateValues.get(this.currClass);
+        this.Statics = staticValues.get(this.currClass);
+
         return this.helperMap;
     }
 
@@ -421,6 +446,21 @@ public class Identification implements Visitor<Object,Object> {
         }
 
         this.localAssigns.push(ref.id.spelling);
+
+        if (this.Statics != null && this.Statics.size() > 0) {
+            this.Statics = this.staticValues.get(currClass);
+
+            for (Declaration d: this.Statics) {
+                if (d.name == ref.id.spelling) {
+                    this.isRefStatic = true;
+                }
+            }
+
+            this.Statics = new Stack<>();
+        } else {
+            isRefStatic = false;
+        }
+
         return rVal;
     }
 
@@ -440,12 +480,14 @@ public class Identification implements Visitor<Object,Object> {
             if (IDTable.containsKey(id)) {
                 this.helperMap = IDTable.get(id);
                 this.privates = privateValues.get(id);
+                this.Statics = staticValues.get(id);
             } else {
                 try {
                     if (localDeclMap.containsKey(id)) {
                         if (((VarDecl) localDeclMap.get(id)).type.typeKind == TypeKind.CLASS) {
                             this.helperMap = IDTable.get(((VarDecl) localDeclMap.get(id)).className);
                             this.privates = new Stack<>();
+                            this.Statics = this.staticValues.get(((VarDecl) localDeclMap.get(id)).className);
                         } else {
                             throw new IdentificationError(
                                     ref, ((VarDecl) localDeclMap.get(id)).type.typeKind.toString()
@@ -457,6 +499,7 @@ public class Identification implements Visitor<Object,Object> {
                             this.helperMap = IDTable
                                     .get(((FieldDecl) containsHelper(this.memberDeclMap, id)).className);
                             this.privates = new Stack<>();
+                            this.Statics = this.staticValues.get(((FieldDecl) containsHelper(this.memberDeclMap, id)).className);
                         } else {
                             throw new IdentificationError(ref, ((FieldDecl) containsHelper(this.memberDeclMap, id)).type.typeKind.toString() + " cannot be qualified");
                         }
@@ -464,6 +507,7 @@ public class Identification implements Visitor<Object,Object> {
                 } catch (Exception e) {
                     this.helperMap = new HashMap<>();
                     this.privates = new Stack<>();
+                    this.Statics = new Stack<>();
                 }
             }
         } 
@@ -488,6 +532,20 @@ public class Identification implements Visitor<Object,Object> {
                     }
                 }
             }
+        }
+
+        if (this.Statics != null && this.Statics.size() > 0) {
+            this.Statics = this.staticValues.get(currClass);
+
+            for (Declaration d : this.Statics) {
+                if (d.name == ref.id.spelling) {
+                    this.isRefStatic = true;
+                }
+            }
+
+            this.Statics = new Stack<>();
+        } else {
+            isRefStatic = false;
         }
 
         return null;
