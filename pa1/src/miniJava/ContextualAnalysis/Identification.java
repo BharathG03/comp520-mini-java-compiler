@@ -10,6 +10,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Stack;
 
+import javax.swing.plaf.synth.SynthPasswordFieldUI;
+
 public class Identification implements Visitor<Object,Object> {
 	private ErrorReporter _errors;
 
@@ -25,9 +27,10 @@ public class Identification implements Visitor<Object,Object> {
     private Map<String, Stack<Declaration>> privateValues = new HashMap<>();
     private Stack<Declaration> privates;
     private Map<String, Stack<Declaration>> staticValues = new HashMap<>();
-    private Stack<Declaration> Statics;
+    private Stack<Declaration> Statics = new Stack<>();
     private boolean isMethodStatic = false;
     private boolean isRefStatic = false;
+    private boolean isLocal = false;
 	
 	public Identification(ErrorReporter errors) {
 		this._errors = errors;
@@ -352,14 +355,11 @@ public class Identification implements Visitor<Object,Object> {
 
     @Override
     public Object visitRefExpr(RefExpr expr, Object arg) {
+        this.isLocal = false;
         if (expr.ref.visit(this, indent((String) arg)).equals("MethodDecl")) {
             throw new IdentificationError(expr, "Method cannot be used as a Field");
         }
         this.helperMap = null;
-
-        if (this.isMethodStatic != this.isRefStatic) {
-            throw new IdentificationError(expr, "Invalid mismatch between static and non static fields");
-        }
 
         return null;
     }
@@ -447,18 +447,23 @@ public class Identification implements Visitor<Object,Object> {
 
         this.localAssigns.push(ref.id.spelling);
 
-        if (this.Statics != null && this.Statics.size() > 0) {
+        
+        if (this.Statics == null || this.Statics.size() <= 0) {
             this.Statics = this.staticValues.get(currClass);
 
             for (Declaration d: this.Statics) {
-                if (d.name == ref.id.spelling) {
+                if (d.name.equals(ref.id.spelling)) {
                     this.isRefStatic = true;
+
+                    if (!this.isLocal && !localDeclMap.containsKey(ref.id.spelling) && this.isMethodStatic && this.isMethodStatic != this.isRefStatic) {
+                        throw new IdentificationError(null, "Invalid mismatch between static and non static fields");
+                    } else if (localDeclMap.containsKey(ref.id.spelling)) {
+                        this.isLocal = true;
+                    }
                 }
             }
 
             this.Statics = new Stack<>();
-        } else {
-            isRefStatic = false;
         }
 
         return rVal;
@@ -488,6 +493,7 @@ public class Identification implements Visitor<Object,Object> {
                             this.helperMap = IDTable.get(((VarDecl) localDeclMap.get(id)).className);
                             this.privates = new Stack<>();
                             this.Statics = this.staticValues.get(((VarDecl) localDeclMap.get(id)).className);
+                            this.isLocal = true;
                         } else {
                             throw new IdentificationError(
                                     ref, ((VarDecl) localDeclMap.get(id)).type.typeKind.toString()
@@ -500,6 +506,17 @@ public class Identification implements Visitor<Object,Object> {
                                     .get(((FieldDecl) containsHelper(this.memberDeclMap, id)).className);
                             this.privates = new Stack<>();
                             this.Statics = this.staticValues.get(((FieldDecl) containsHelper(this.memberDeclMap, id)).className);
+                            this.isRefStatic = false;
+                            for (Declaration d : this.Statics) {
+                                if (d.name.equals(ref.id.spelling)) {
+                                    this.isRefStatic = true;
+                                }
+                            }
+
+                            if (!isLocal && this.isMethodStatic != this.isRefStatic) {
+                                throw new IdentificationError(ref, 
+                                        "Invalid mismatch between static and non static fields");
+                            }
                         } else {
                             throw new IdentificationError(ref, ((FieldDecl) containsHelper(this.memberDeclMap, id)).type.typeKind.toString() + " cannot be qualified");
                         }
@@ -525,6 +542,22 @@ public class Identification implements Visitor<Object,Object> {
                         }
                         this.helperMap = IDTable.get(((FieldDecl) key).className);
                         privates = this.privateValues.get(((FieldDecl) key).className);
+                        this.Statics = this.staticValues.get(((FieldDecl) key).className);
+
+                        if (this.Statics != null && this.Statics.size() > 0) { 
+                            for (Declaration d : this.Statics) {
+                                if (d.name.equals(ref.id.spelling)) {
+                                    this.isRefStatic = true;
+                                }
+                            }
+
+                            if (!isLocal && this.isMethodStatic != this.isRefStatic) {
+                                System.out.println("TESTTEST");
+                                throw new IdentificationError(ref,
+                                        "Invalid mismatch between static and non static fields");
+                            }
+                        }
+                
                         return key.toString();
                     } catch (Exception e) {
                         this.helperMap = new HashMap<>();
@@ -532,20 +565,6 @@ public class Identification implements Visitor<Object,Object> {
                     }
                 }
             }
-        }
-
-        if (this.Statics != null && this.Statics.size() > 0) {
-            this.Statics = this.staticValues.get(currClass);
-
-            for (Declaration d : this.Statics) {
-                if (d.name == ref.id.spelling) {
-                    this.isRefStatic = true;
-                }
-            }
-
-            this.Statics = new Stack<>();
-        } else {
-            isRefStatic = false;
         }
 
         return null;
