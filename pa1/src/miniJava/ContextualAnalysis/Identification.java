@@ -556,7 +556,7 @@ public class Identification implements Visitor<Object,Object> {
                             }
                         }
 
-                        if (!isLocal && this.isMethodStatic != this.isRefStatic) {
+                        if (!isLocal && !isClass && this.isMethodStatic != this.isRefStatic) {
                             throw new IdentificationError(ref,
                                     "Invalid mismatch between static and non static fields");
                         }
