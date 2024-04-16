@@ -455,20 +455,18 @@ public class Identification implements Visitor<Object,Object> {
                 if (d.name.equals(ref.id.spelling)) {
                     this.isRefStatic = true;
 
-                    if (!this.isLocal && !localDeclMap.containsKey(ref.id.spelling) && this.isMethodStatic && this.isMethodStatic != this.isRefStatic) {
-                        throw new IdentificationError(null, "Invalid mismatch between static and non static fields");
-                    } else if (localDeclMap.containsKey(ref.id.spelling)) {
+                    if (localDeclMap.containsKey(ref.id.spelling)) {
                         this.isLocal = true;
                     }
                 }
             }
 
-            if (!isLocal && this.isMethodStatic != this.isRefStatic) {
-                throw new IdentificationError(ref,
-                        "Invalid mismatch between static and non static fields");
-            }
-
             this.Statics = new Stack<>();
+
+            if (!IDTable.containsKey(ref.id.spelling) && !localDeclMap.containsKey(ref.id.spelling)
+                    && !this.isLocal && this.isMethodStatic && this.isMethodStatic != this.isRefStatic) {
+                throw new IdentificationError(ref, "Invalid mismatch between static and non static fields");
+            }
         }
 
         return rVal;
@@ -479,6 +477,7 @@ public class Identification implements Visitor<Object,Object> {
         Object temp = ref.ref.visit(this, indent((String) arg));
 
         String id = "";
+        boolean isClass = false;
 
         if (this.helperMap == null) {
             id = this.localAssigns.pop();
@@ -491,6 +490,7 @@ public class Identification implements Visitor<Object,Object> {
                 this.helperMap = IDTable.get(id);
                 this.privates = privateValues.get(id);
                 this.Statics = staticValues.get(id);
+                isClass = true;
             } else {
                 try {
                     if (localDeclMap.containsKey(id)) {
@@ -506,6 +506,7 @@ public class Identification implements Visitor<Object,Object> {
                         }
 
                     } else if (containsHelper(this.memberDeclMap, id) != null) {
+                        
                         if (((FieldDecl) containsHelper(this.memberDeclMap, id)).type.typeKind == TypeKind.CLASS) {
                             this.helperMap = IDTable
                                     .get(((FieldDecl) containsHelper(this.memberDeclMap, id)).className);
@@ -519,6 +520,7 @@ public class Identification implements Visitor<Object,Object> {
                             }
 
                             if (!isLocal && this.isMethodStatic != this.isRefStatic) {
+                                System.out.println("TEST");
                                 throw new IdentificationError(ref, 
                                         "Invalid mismatch between static and non static fields");
                             }
@@ -545,11 +547,9 @@ public class Identification implements Visitor<Object,Object> {
                         if (privates.contains(key) && IDTable.get(currClass) != this.helperMap) {
                             throw new IdentificationError(ref, "Private value referenced");
                         }
-                        this.helperMap = IDTable.get(((FieldDecl) key).className);
-                        privates = this.privateValues.get(((FieldDecl) key).className);
-                        this.Statics = this.staticValues.get(((FieldDecl) key).className);
 
-                        if (this.Statics != null && this.Statics.size() > 0) { 
+                        if (this.Statics != null && this.Statics.size() > 0) {
+
                             for (Declaration d : this.Statics) {
                                 if (d.name.equals(ref.id.spelling)) {
                                     this.isRefStatic = true;
@@ -558,11 +558,20 @@ public class Identification implements Visitor<Object,Object> {
                         }
 
                         if (!isLocal && this.isMethodStatic != this.isRefStatic) {
-                            System.out.println("TESTTEST");
+                            System.out.println(this.isMethodStatic);
+                            System.out.println(this.isRefStatic);
+                            System.out.println(ref.id.spelling);
                             throw new IdentificationError(ref,
                                     "Invalid mismatch between static and non static fields");
                         }
-                
+                        if (isClass) {
+                            isLocal = true;
+                        }
+
+                        this.helperMap = IDTable.get(((FieldDecl) key).className);
+                        privates = this.privateValues.get(((FieldDecl) key).className);
+                        this.Statics = this.staticValues.get(((FieldDecl) key).className);
+
                         return key.toString();
                     } catch (Exception e) {
                         this.helperMap = new HashMap<>();
