@@ -490,7 +490,9 @@ public class Identification implements Visitor<Object,Object> {
                 this.helperMap = IDTable.get(id);
                 this.privates = privateValues.get(id);
                 this.Statics = staticValues.get(id);
-                isClass = true;
+                if (!id.equals(currClass)) {
+                    isClass = true;
+                }
             } else {
                 try {
                     if (localDeclMap.containsKey(id)) {
