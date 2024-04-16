@@ -520,7 +520,6 @@ public class Identification implements Visitor<Object,Object> {
                             }
 
                             if (!isLocal && this.isMethodStatic != this.isRefStatic) {
-                                System.out.println("TEST");
                                 throw new IdentificationError(ref, 
                                         "Invalid mismatch between static and non static fields");
                             }
@@ -558,9 +557,6 @@ public class Identification implements Visitor<Object,Object> {
                         }
 
                         if (!isLocal && this.isMethodStatic != this.isRefStatic) {
-                            System.out.println(this.isMethodStatic);
-                            System.out.println(this.isRefStatic);
-                            System.out.println(ref.id.spelling);
                             throw new IdentificationError(ref,
                                     "Invalid mismatch between static and non static fields");
                         }
