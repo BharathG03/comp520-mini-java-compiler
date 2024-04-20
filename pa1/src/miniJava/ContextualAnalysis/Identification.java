@@ -10,8 +10,6 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Stack;
 
-import javax.swing.plaf.synth.SynthPasswordFieldUI;
-
 public class Identification implements Visitor<Object,Object> {
 	private ErrorReporter _errors;
 
