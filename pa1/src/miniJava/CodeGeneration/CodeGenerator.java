@@ -219,12 +219,14 @@ public class CodeGenerator implements Visitor<Object, Object> {
 
         _asm.add(new Pop(Reg64.RAX));
 
-        _asm.add(new Push(10));
-        _asm.add(new Lea(new ModRMSIB(Reg64.RSP, 0, Reg64.RSI))); // Move num to RSI
-        _asm.add(new Mov_rmi(new ModRMSIB(Reg64.RDI, true), 1)); // Move 1 to RDI (file descriptor for stdout)
-        _asm.add(new Mov_rmi(new ModRMSIB(Reg64.RDX, true), 1)); // Move 1 to RDX (length of the integer)
-        _asm.add(new Mov_rmi(new ModRMSIB(Reg64.RAX, true), 1)); // Move 1 to RAX (syscall number for sys_write)
-        _asm.add(new Syscall()); // Make the syscall to print the integer
+        // _asm.add(new Push(10));
+        // _asm.add(new Lea(new ModRMSIB(Reg64.RSP, 0, Reg64.RSI))); // Move num to RSI
+        // _asm.add(new Mov_rmi(new ModRMSIB(Reg64.RDI, true), 1)); // Move 1 to RDI (file descriptor for stdout)
+        // _asm.add(new Mov_rmi(new ModRMSIB(Reg64.RDX, true), 1)); // Move 1 to RDX (length of the integer)
+        // _asm.add(new Mov_rmi(new ModRMSIB(Reg64.RAX, true), 1)); // Move 1 to RAX (syscall number for sys_write)
+        // _asm.add(new Syscall()); // Make the syscall to print the integer
+
+        // _asm.add(new Pop(Reg64.RAX));
         
         return -1;
     }
