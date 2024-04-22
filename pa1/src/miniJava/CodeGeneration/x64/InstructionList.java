@@ -37,7 +37,7 @@ public class InstructionList {
 		for( int i = _markStart; i < _currentIdx; ++i ) {
 			Instruction ins = _instructions.get(i);
 			byte[] barr = ins.getBytes();
-			System.out.printf( "%04X %s\t", ins.startAddress, ins.getClass().getSimpleName() );
+			//System.out.printf( "%04X %s\t", ins.startAddress, ins.getClass().getSimpleName() );
 			renderBytes(barr);
 			System.out.println();
 		}

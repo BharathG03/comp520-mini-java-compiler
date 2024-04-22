@@ -102,7 +102,7 @@ public class CodeGenerator implements Visitor<Object, Object> {
         // Note the false means that it is a 32-bit immediate for jumping (an int)
         // _asm.patch( someJump.listIdx, new Jmp(asm.size(), someJump.startAddress,
         // false) );
-
+        //_asm.markOutputStart();
         prog.visit(this, null);
 
         // Output the file "a.out" if no errors
@@ -177,6 +177,8 @@ public class CodeGenerator implements Visitor<Object, Object> {
 
         main.visit(this, null);
 
+        //_asm.outputFromMark();
+
         // TODO Change this exit statement
         _asm.add(new Mov_rmi(new ModRMSIB(Reg64.RAX, true), 60));
         _asm.add(new Xor(new ModRMSIB(Reg64.RDI, Reg64.RDI)));
@@ -217,6 +219,13 @@ public class CodeGenerator implements Visitor<Object, Object> {
 
         _asm.add(new Pop(Reg64.RAX));
 
+        _asm.add(new Push(10));
+        _asm.add(new Lea(new ModRMSIB(Reg64.RSP, 0, Reg64.RSI))); // Move num to RSI
+        _asm.add(new Mov_rmi(new ModRMSIB(Reg64.RDI, true), 1)); // Move 1 to RDI (file descriptor for stdout)
+        _asm.add(new Mov_rmi(new ModRMSIB(Reg64.RDX, true), 1)); // Move 1 to RDX (length of the integer)
+        _asm.add(new Mov_rmi(new ModRMSIB(Reg64.RAX, true), 1)); // Move 1 to RAX (syscall number for sys_write)
+        _asm.add(new Syscall()); // Make the syscall to print the integer
+        
         return -1;
     }
 
@@ -241,7 +250,6 @@ public class CodeGenerator implements Visitor<Object, Object> {
             _asm.add(new Pop(Reg64.RAX));
 
             if (this.address) {
-                System.out.println("TEST");
                 _asm.add(new Mov_rrm(new ModRMSIB(Reg64.RAX, 0, Reg64.RAX)));
             }
 
@@ -253,7 +261,7 @@ public class CodeGenerator implements Visitor<Object, Object> {
             _asm.add(new Mov_rmr(new ModRMSIB(Reg64.RBP, Reg64.RSP)));
             this.localVariables.push(new HashMap<>());
             this.localVarDecls.push(new HashMap<>());
-            this.offsets.push(0);
+            this.offsets.push(8);
 
             if (!md.name.equals("main") && this.args != null) {
                 for (int i = 0; i < this.args.size(); i++) {
@@ -333,7 +341,7 @@ public class CodeGenerator implements Visitor<Object, Object> {
 
         _asm.add(new Xor(new ModRMSIB(Reg64.RAX, Reg64.RAX)));
         _asm.add(new Pop(Reg64.RAX));
-        _asm.add(new Mov_rmr(new ModRMSIB(Reg64.RBP, localVariables.peek().get(stmt.varDecl.name), Reg64.RAX)));
+        _asm.add(new Mov_rmr(new ModRMSIB(Reg64.RBP, -localVariables.peek().get(stmt.varDecl.name), Reg64.RAX)));
 
         return null;
     }
@@ -344,12 +352,18 @@ public class CodeGenerator implements Visitor<Object, Object> {
         this.address = false;
 
         stmt.ref.visit(this, null);
+
+        this.address = false;
         stmt.val.visit(this, null);
 
         _asm.add(new Pop(Reg64.RCX));
+
+        if (this.address) {
+            _asm.add(new Mov_rrm(new ModRMSIB(Reg64.RCX, 0, Reg64.RCX)));
+        }
+
         _asm.add(new Pop(Reg64.RAX));
-        _asm.add(new Mov_rmr(new ModRMSIB(Reg64.RAX, 0, Reg64.RCX))); // Value of RCX needs to be stored in location in
-                                                                      // RAX
+        _asm.add(new Mov_rmr(new ModRMSIB(Reg64.RAX, 0, Reg64.RCX))); // Value of RCX needs to be stored in location in RAX
 
         return null;
     }
@@ -415,10 +429,13 @@ public class CodeGenerator implements Visitor<Object, Object> {
     @Override
     public Object visitBinaryExpr(BinaryExpr expr, Object arg) {
         boolean left = false;
+        
+        this.helperClass = null;
         this.address = false;
-
         expr.left.visit(this, null);
         left = this.address;
+
+        this.helperClass = null;
         this.address = false;
         expr.right.visit(this, null);
 
@@ -480,7 +497,7 @@ public class CodeGenerator implements Visitor<Object, Object> {
         // this.helperClass = null;
 
         this.address = false;
-
+        
         // if (expr.ref.toString().equals("IdRef")) {
         //     IdRef temp = (IdRef) expr.ref;
 
@@ -560,13 +577,7 @@ public class CodeGenerator implements Visitor<Object, Object> {
                 }
             }
 
-            // _asm.add(new Mov_rmr(new ModRMSIB(Reg64.RCX, Reg64.RBP)));
-            // _asm.add(new Add(new ModRMSIB(Reg64.RCX, true),
-            // localVariables.peek().get(ref.id.spelling)));
-            _asm.add(new Lea(new ModRMSIB(Reg64.RBP, localVariables.peek().get(ref.id.spelling), Reg64.RAX)));
-            // _asm.add(new Mov_rmr(new ModRMSIB(Reg64.RAX, Reg64.RCX))); //RAX needs to
-            // store location of RBP + offset
-            // _asm.add(new Mov_rrm(new ModRMSIB(Reg64.RAX, 0, Reg64.RAX)));
+            _asm.add(new Lea(new ModRMSIB(Reg64.RBP, -localVariables.peek().get(ref.id.spelling), Reg64.RAX)));
             _asm.add(new Push(Reg64.RAX));
         } else {
             for (ClassDecl c : this.classes) {
@@ -592,10 +603,10 @@ public class CodeGenerator implements Visitor<Object, Object> {
     @Override
     public Object visitIdentifier(Identifier id, Object arg) {
         ClassDecl tempHelperClassStore = this.helperClass;
-
+ 
         if (this.helperClass == null) {
             _asm.add(new Mov_rmr(new ModRMSIB(Reg64.RCX, Reg64.RBP)));
-            _asm.add(new Add(new ModRMSIB(Reg64.RCX, true), localVariables.peek().get(id.spelling)));
+            _asm.add(new Sub(new ModRMSIB(Reg64.RCX, true), localVariables.peek().get(id.spelling)));
 
             _asm.add(new Mov_rmr(new ModRMSIB(Reg64.RAX, Reg64.RCX))); // RAX needs to store location of RBP + offset
             _asm.add(new Push(Reg64.RAX));
