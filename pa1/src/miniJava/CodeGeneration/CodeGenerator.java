@@ -101,8 +101,8 @@ public class CodeGenerator implements Visitor<Object, Object> {
         // Note the false means that it is a 32-bit immediate for jumping (an int)
         // _asm.patch( someJump.listIdx, new Jmp(asm.size(), someJump.startAddress,
         // false) );
-        //_asm.markOutputStart();
-        prog.visit(this, null);
+        _asm.markOutputStart();
+        //prog.visit(this, null);
 
         // Output the file "a.out" if no errors
         if (!_errors.hasErrors())
@@ -388,21 +388,74 @@ public class CodeGenerator implements Visitor<Object, Object> {
 
     @Override
     public Object visitReturnStmt(ReturnStmt stmt, Object arg) {
-        // TODO Auto-generated method stub
+        if (stmt.returnExpr != null) {
+            stmt.returnExpr.visit(this, null);
+            _asm.add(new Pop(Reg64.RAX));
+            
+            if (this.address) {
+                _asm.add(new Mov_rrm(new ModRMSIB(Reg64.RAX, 0, Reg64.RAX)));
+                _asm.add(new Push(Reg64.RAX));
+                this.address = false;
+            }
+        }
         return null;
     }
 
     @Override
     public Object visitIfStmt(IfStmt stmt, Object arg) {
-        // TODO Auto-generated method stub
         stmt.cond.visit(this, null);
+        _asm.add(new Pop(Reg64.RAX));
+
+        if (this.address) {
+            _asm.add(new Mov_rrm(new ModRMSIB(Reg64.RAX, 0, Reg64.RAX)));
+        }
+
+        this.address = false;
+
+       _asm.add(new Cmp(new ModRMSIB(Reg64.RAX, true), 0));
+
+        int start = _asm.getSize();
+        int idxStart = _asm.add(new CondJmp(Condition.E, 0, 0, false)); // 32-bit offset jump to nowhere
+        stmt.thenStmt.visit(this, null);
+        int end = _asm.getSize();
+
+        if (stmt.elseStmt != null) {
+            int elseStart = _asm.getSize();
+            int idxEnd = _asm.add(new Jmp(0)); // 32-bit offset jump to nowhere
+            end = _asm.getSize();
+
+            stmt.elseStmt.visit(this, null);
+            _asm.patch(idxEnd, new Jmp(elseStart, _asm.getSize(), false));
+        }
+    
+        _asm.patch(idxStart, new CondJmp(Condition.E, start, end, false));
 
         return null;
     }
 
     @Override
     public Object visitWhileStmt(WhileStmt stmt, Object arg) {
-        // TODO Auto-generated method stub
+        int condStart = _asm.getSize();
+        stmt.cond.visit(this, null);
+        _asm.add(new Pop(Reg64.RAX));
+
+        if (this.address) {
+            _asm.add(new Mov_rrm(new ModRMSIB(Reg64.RAX, 0, Reg64.RAX)));
+        }
+
+        this.address = false;
+
+        _asm.add(new Cmp(new ModRMSIB(Reg64.RAX, true), 0));
+
+        int start = _asm.getSize();
+        int idxStart = _asm.add(new CondJmp(Condition.E, 0, 0, false)); // 32-bit offset jump to nowhere
+        stmt.body.visit(this, null);
+
+        _asm.add(new Jmp(_asm.getSize(), condStart, false)); // Jump back to the start of the condition
+        int end = _asm.getSize();
+
+        _asm.patch(idxStart, new CondJmp(Condition.E, start, end, false));
+
         return null;
     }
 
@@ -536,6 +589,7 @@ public class CodeGenerator implements Visitor<Object, Object> {
     @Override
     public Object visitLiteralExpr(LiteralExpr expr, Object arg) {
         expr.lit.visit(this, null);
+        this.address = false;
         return null;
     }
 
@@ -641,22 +695,15 @@ public class CodeGenerator implements Visitor<Object, Object> {
                     if (m.name.equals(id.spelling)) {
 
                         m.visit(this, null);
-                        break;
+                        _asm.add(new Push(Reg64.RAX));
+                        return null;
                     }
                 }
             } else if (!isStatic) {
-                // _asm.add(new Mov_rmr(new ModRMSIB(Reg64.RCX, Reg64.RBP)));
-                // _asm.add(new Add(new ModRMSIB(Reg64.RCX, true), fieldOffset));
-                // _asm.add(new Lea(new ModRMSIB(Reg64.RAX, fieldOffset, Reg64.RAX)));
                 _asm.add(new Add(new ModRMSIB(Reg64.RAX, true), fieldOffset));
-                // _asm.add(new Mov_rmr(new ModRMSIB(Reg64.RAX, Reg64.RCX))); // RAX needs to
-                // store RBP + offset
-                _asm.add(new Push(Reg64.RAX));
+                _asm.add(new Push(Reg64.RBX));
             } else {
                 _asm.add(new Mov_rmr(new ModRMSIB(Reg64.RCX, Reg64.R15)));
-                // _asm.add(new Lea(new ModRMSIB(Reg64.R15,
-                // this.staticLocations.get(tempHelperClassStore.name).get(id.spelling),
-                // Reg64.RCX)));
                 _asm.add(new Add(new ModRMSIB(Reg64.RCX, true),
                         this.staticLocations.get(tempHelperClassStore.name).get(id.spelling)));
 
