@@ -101,8 +101,8 @@ public class CodeGenerator implements Visitor<Object, Object> {
         // Note the false means that it is a 32-bit immediate for jumping (an int)
         // _asm.patch( someJump.listIdx, new Jmp(asm.size(), someJump.startAddress,
         // false) );
-        _asm.markOutputStart();
-        //prog.visit(this, null);
+        //_asm.markOutputStart();
+        prog.visit(this, null);
 
         // Output the file "a.out" if no errors
         if (!_errors.hasErrors())
