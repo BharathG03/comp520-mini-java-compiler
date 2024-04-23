@@ -701,7 +701,7 @@ public class CodeGenerator implements Visitor<Object, Object> {
                 }
             } else if (!isStatic) {
                 _asm.add(new Add(new ModRMSIB(Reg64.RAX, true), fieldOffset));
-                _asm.add(new Push(Reg64.RBX));
+                _asm.add(new Push(Reg64.RAX));
             } else {
                 _asm.add(new Mov_rmr(new ModRMSIB(Reg64.RCX, Reg64.R15)));
                 _asm.add(new Add(new ModRMSIB(Reg64.RCX, true),
