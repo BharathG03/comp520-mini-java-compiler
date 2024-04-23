@@ -459,10 +459,8 @@ public class CodeGenerator implements Visitor<Object, Object> {
 
         if (expr.operator.spelling.equals("+")) {
             _asm.add(new Add(new ModRMSIB(Reg64.RAX, Reg64.RCX)));
-            _asm.add(new Push(Reg64.RAX));
         } else if (expr.operator.spelling.equals("-")) {
             _asm.add(new Sub(new ModRMSIB(Reg64.RAX, Reg64.RCX)));
-            _asm.add(new Push(Reg64.RAX));
         } else if (expr.operator.spelling.equals("/")) {
             _asm.add(new Xor(new ModRMSIB(Reg64.RDX, Reg64.RDX)));
             _asm.add(new Idiv(new ModRMSIB(Reg64.RCX, true)));
