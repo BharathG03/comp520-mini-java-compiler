@@ -1,6 +1,5 @@
 package miniJava.CodeGeneration;
 
-import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Stack;
@@ -177,7 +176,7 @@ public class CodeGenerator implements Visitor<Object, Object> {
 
         main.visit(this, null);
 
-        //_asm.outputFromMark();
+        _asm.outputFromMark();
 
         // TODO Change this exit statement
         _asm.add(new Mov_rmi(new ModRMSIB(Reg64.RAX, true), 60));
@@ -283,7 +282,7 @@ public class CodeGenerator implements Visitor<Object, Object> {
                 s.visit(this, null);
             }
 
-            _asm.add(new Mov_rmr(new ModRMSIB(Reg64.RBP, Reg64.RSP)));
+            //_asm.add(new Mov_rmr(new ModRMSIB(Reg64.RBP, Reg64.RSP)));
 
             this.localVariables.pop();
             this.localVarDecls.pop();
@@ -416,6 +415,8 @@ public class CodeGenerator implements Visitor<Object, Object> {
             _asm.add(new Mov_rrm(new ModRMSIB(Reg64.RAX, 0, Reg64.RAX)));
         }
 
+        this.address = false;
+
         if (expr.operator.kind == TokenType.Minus) {
             _asm.add(new Xor(new ModRMSIB(Reg64.RCX, Reg64.RCX)));
             _asm.add(new Sub(new ModRMSIB(Reg64.RCX, Reg64.RAX)));
@@ -453,6 +454,8 @@ public class CodeGenerator implements Visitor<Object, Object> {
         if (left) {
             _asm.add(new Mov_rrm(new ModRMSIB(Reg64.RAX, 0, Reg64.RAX)));
         }
+
+        this.address = false;
 
         if (expr.operator.spelling.equals("+")) {
             _asm.add(new Add(new ModRMSIB(Reg64.RAX, Reg64.RCX)));
