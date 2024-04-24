@@ -242,7 +242,8 @@ public class CodeGenerator implements Visitor<Object, Object> {
 
     @Override
     public Object visitMethodDecl(MethodDecl md, Object arg) {
-        if (md.name.equals("println")) {
+        if (md.name.equals("println") && md.parameterDeclList.size() == 1
+                && md.parameterDeclList.get(0).type.typeKind == TypeKind.INT) {
             this.helperClass = null;
             this.address = false;
 
@@ -340,7 +341,6 @@ public class CodeGenerator implements Visitor<Object, Object> {
         _asm.add(new Push(0));
         stmt.initExp.visit(this, null);
 
-        _asm.add(new Xor(new ModRMSIB(Reg64.RAX, Reg64.RAX)));
         _asm.add(new Pop(Reg64.RAX));
         _asm.add(new Mov_rmr(new ModRMSIB(Reg64.RBP, -localVariables.peek().get(stmt.varDecl.name), Reg64.RAX)));
 
@@ -371,7 +371,26 @@ public class CodeGenerator implements Visitor<Object, Object> {
 
     @Override
     public Object visitIxAssignStmt(IxAssignStmt stmt, Object arg) {
-        // TODO Auto-generated method stub
+        stmt.ix.visit(this, null);
+        Boolean temp = this.address;
+        stmt.ref.visit(this, null);
+        stmt.exp.visit(this, null);
+
+        _asm.add(new Pop(Reg64.RDX));
+        
+        if (this.address) {
+            _asm.add(new Mov_rrm(new ModRMSIB(Reg64.RDX, 0, Reg64.RDX)));
+        }
+
+        _asm.add(new Pop(Reg64.RCX));
+        _asm.add(new Pop(Reg64.RAX));
+
+        if (temp) {
+            _asm.add(new Mov_rrm(new ModRMSIB(Reg64.RAX, 0, Reg64.RAX)));
+        }
+
+        _asm.add(new Mov_rmr(new ModRMSIB(Reg64.RCX, Reg64.RDX, 8, 0, Reg64.RAX)));
+
         return null;
     }
 
@@ -522,7 +541,6 @@ public class CodeGenerator implements Visitor<Object, Object> {
         } else if (expr.operator.kind == TokenType.Comparator || expr.operator.kind == TokenType.Equality
                 || expr.operator.kind == TokenType.NotEquality) {
             _asm.add(new Cmp(new ModRMSIB(Reg64.RAX, Reg64.RCX)));
-            _asm.add(new Xor(new ModRMSIB(Reg64.RAX, Reg64.RAX)));
 
             if (expr.operator.spelling.equals("<")) {
                 _asm.add(new SetCond(Condition.LT, Reg8.AL));
@@ -542,7 +560,7 @@ public class CodeGenerator implements Visitor<Object, Object> {
         } else if (expr.operator.spelling.equals("||")) {
             _asm.add(new Or(new ModRMSIB(Reg64.RAX, Reg64.RCX)));
         }
-
+        
         _asm.add(new Push(Reg64.RAX));
 
         return null;
@@ -570,7 +588,23 @@ public class CodeGenerator implements Visitor<Object, Object> {
 
     @Override
     public Object visitIxExpr(IxExpr expr, Object arg) {
-        // TODO Auto-generated method stub
+        expr.ixExpr.visit(this, null);
+        Boolean temp = this.address;
+
+        expr.ref.visit(this, null);
+
+        _asm.add(new Pop(Reg64.RCX));
+        _asm.add(new Pop(Reg64.RAX));
+
+        if (temp) {
+            _asm.add(new Mov_rrm(new ModRMSIB(Reg64.RAX, 0, Reg64.RAX)));
+        }
+
+        _asm.add(new Lea(new ModRMSIB(Reg64.RCX, Reg64.RAX, 8, 0, Reg64.RAX)));
+        _asm.add(new Push(Reg64.RAX));
+
+        this.address = true;
+
         return null;
     }
 
@@ -603,7 +637,18 @@ public class CodeGenerator implements Visitor<Object, Object> {
 
     @Override
     public Object visitNewArrayExpr(NewArrayExpr expr, Object arg) {
-        // TODO Auto-generated method stub
+        /*expr.sizeExpr.visit(this, null);
+        _asm.add(new Pop(Reg64.RAX));
+
+        if (this.address) {
+            _asm.add(new Mov_rrm(new ModRMSIB(Reg64.RAX, 0, Reg64.RAX)));
+        }
+
+        this.address = false;*/
+
+        this.makeMalloc();
+        _asm.add(new Push(Reg64.RAX));
+
         return null;
     }
 
