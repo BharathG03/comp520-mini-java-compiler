@@ -374,6 +374,7 @@ public class CodeGenerator implements Visitor<Object, Object> {
         stmt.ix.visit(this, null);
         Boolean temp = this.address;
         stmt.ref.visit(this, null);
+        Boolean temp2 = this.address;
         stmt.exp.visit(this, null);
 
         _asm.add(new Pop(Reg64.RDX));
@@ -383,13 +384,23 @@ public class CodeGenerator implements Visitor<Object, Object> {
         }
 
         _asm.add(new Pop(Reg64.RCX));
+
+        if (temp2) {
+            _asm.add(new Mov_rrm(new ModRMSIB(Reg64.RCX, 0, Reg64.RCX)));
+        }
+
         _asm.add(new Pop(Reg64.RAX));
 
         if (temp) {
             _asm.add(new Mov_rrm(new ModRMSIB(Reg64.RAX, 0, Reg64.RAX)));
         }
 
-        _asm.add(new Mov_rmr(new ModRMSIB(Reg64.RCX, Reg64.RDX, 8, 0, Reg64.RAX)));
+        _asm.add(new Mov_rmi(new ModRMSIB(Reg64.R8, true), 8));
+        _asm.add(new Imul(Reg64.RAX, new ModRMSIB(Reg64.R8, true)));
+        //_asm.add(new Mov_rmr(new ModRMSIB(Reg64.RCX, Reg64.RAX, 8, 0, Reg64.RDX)));
+
+        _asm.add(new Add(new ModRMSIB(Reg64.RCX, Reg64.RAX)));
+        _asm.add(new Mov_rmr(new ModRMSIB(Reg64.RCX, 0, Reg64.RDX)));
 
         return null;
     }
@@ -456,12 +467,10 @@ public class CodeGenerator implements Visitor<Object, Object> {
     public Object visitWhileStmt(WhileStmt stmt, Object arg) {
         int condStart = _asm.getSize();
         stmt.cond.visit(this, null);
-        _asm.add(new Pop(Reg64.RAX));
 
         if (this.address) {
             _asm.add(new Mov_rrm(new ModRMSIB(Reg64.RAX, 0, Reg64.RAX)));
         }
-
         this.address = false;
 
         _asm.add(new Cmp(new ModRMSIB(Reg64.RAX, true), 0));
@@ -543,6 +552,10 @@ public class CodeGenerator implements Visitor<Object, Object> {
             _asm.add(new Cmp(new ModRMSIB(Reg64.RAX, Reg64.RCX)));
 
             if (expr.operator.spelling.equals("<")) {
+               /*_asm.add(new Push(Reg64.RAX));
+                this.makePrintln();
+                _asm.add(new Push(Reg64.RCX));
+                this.makePrintln();*/
                 _asm.add(new SetCond(Condition.LT, Reg8.AL));
             } else if (expr.operator.spelling.equals(">")) {
                 _asm.add(new SetCond(Condition.GT, Reg8.AL));
@@ -591,17 +604,25 @@ public class CodeGenerator implements Visitor<Object, Object> {
         expr.ixExpr.visit(this, null);
         Boolean temp = this.address;
 
+        this.address = false;
         expr.ref.visit(this, null);
 
         _asm.add(new Pop(Reg64.RCX));
         _asm.add(new Pop(Reg64.RAX));
 
+        if (this.address) {
+            _asm.add(new Mov_rrm(new ModRMSIB(Reg64.RCX, 0, Reg64.RCX)));
+        }
+
         if (temp) {
             _asm.add(new Mov_rrm(new ModRMSIB(Reg64.RAX, 0, Reg64.RAX)));
         }
 
-        _asm.add(new Lea(new ModRMSIB(Reg64.RCX, Reg64.RAX, 8, 0, Reg64.RAX)));
-        _asm.add(new Push(Reg64.RAX));
+        _asm.add(new Mov_rmi(new ModRMSIB(Reg64.RDX, true), 8));
+        _asm.add(new Imul(Reg64.RAX, new ModRMSIB(Reg64.RDX, true)));
+        //_asm.add(new Lea(new ModRMSIB(Reg64.RCX, Reg64.RAX, 8, 0, Reg64.RAX)));
+        _asm.add(new Add(new ModRMSIB(Reg64.RCX, Reg64.RAX)));
+        _asm.add(new Push(Reg64.RCX));
 
         this.address = true;
 
